@@ -6,13 +6,14 @@ Build: `pip install -r requirements.txt`
 
 Start on a Linux host: `gunicorn -b 0.0.0.0:$PORT run:app`
 
-Use the repository's Procfile or configure the start command directly. SQLite is stored at `yale_markets.db` in the repository directory; keep the existing filename to preserve compatibility. Arrange persistent storage and backups before retaining user data across deployments.
+Use the repository's Procfile or configure the start command directly. With no `DATABASE_URL`, SQLite uses `yale_markets.db` in the repository directory. For durable deploys, set `DATABASE_URL` to a persistent SQLite path or a Postgres URL and arrange backups.
 
 ## Configuration
 
 | Variable | Setting |
 | --- | --- |
 | FLASK_SECRET_KEY | Strong, persistent random secret, identical across workers |
+| DATABASE_URL | Optional SQLAlchemy URL; unset uses local `yale_markets.db` |
 | APP_BASE_URL | Public HTTPS origin, without a trailing slash |
 | ORIGIN | Same origin as APP_BASE_URL |
 | BOOTSTRAP_ADMIN_NETID | Administrator's Yale NetID |

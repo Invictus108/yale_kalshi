@@ -8,12 +8,23 @@ BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
 
+def _database_uri() -> str:
+    """Prefer DATABASE_URL; fall back to local SQLite."""
+    url = (os.getenv("DATABASE_URL") or "").strip()
+    if not url:
+        return f"sqlite:///{BASE_DIR / 'yale_markets.db'}"
+    # Render/Heroku historically issue postgres://; SQLAlchemy wants postgresql://
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://") :]
+    return url
+
+
 class Config:
     SECRET_KEY = os.getenv("FLASK_SECRET_KEY") or secrets.token_hex(32)
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     MAX_CONTENT_LENGTH = 1024 * 1024
-    SQLALCHEMY_DATABASE_URI = f"sqlite:///{BASE_DIR / 'yale_markets.db'}"
+    SQLALCHEMY_DATABASE_URI = _database_uri()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Yale_Books: ORIGIN + "/login_callback"
