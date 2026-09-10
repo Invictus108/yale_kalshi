@@ -25,10 +25,14 @@
   </div>
   {% endif %}
 
-  {% if market.proposed_outcome %}
+  {% if market.proposed_outcome and market.status in ['proposed', 'disputed'] %}
     <p class="meta" style="margin-top:1rem;">
       Proposed <strong>{{ market.proposed_outcome }}</strong>
-      {% if market.dispute_deadline %} · dispute until {{ market.dispute_deadline.strftime('%b %d %H:%M') }} UTC{% endif %}
+      {% if market.status == 'proposed' and market.dispute_deadline %}
+        · auto-settles {{ market.dispute_deadline.strftime('%b %d %H:%M') }} UTC if undisputed
+      {% elif market.status == 'disputed' %}
+        · disputed — waiting on admin
+      {% endif %}
     </p>
     <p>{{ market.proposal_evidence }}</p>
     {% if market.dispute_reason %}<p><strong>Dispute:</strong> {{ market.dispute_reason }}</p>{% endif %}
@@ -126,6 +130,7 @@
 {% if current_user.is_authenticated and market.status == 'proposed' %}
 <div class="panel">
   <h3>Dispute proposal</h3>
+  <p class="meta">If no one disputes and an admin does not settle sooner, this auto-settles to {{ market.proposed_outcome }}.</p>
   <form method="post" action="{{ url_for('markets.dispute', market_id=market.id) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="reason">Reason</label>
@@ -137,12 +142,13 @@
 
 {% if current_user.is_authenticated and current_user.is_admin and market.status in ['closed', 'proposed', 'disputed'] %}
 <div class="panel">
-  <h3>Admin finalize</h3>
+  <h3>Admin settle</h3>
+  <p class="meta">Settles immediately — no need to wait out the dispute window.</p>
   <form method="post" action="{{ url_for('markets.finalize', market_id=market.id) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="outcome">Final outcome</label>
       <select id="outcome" name="outcome"><option>YES</option><option>NO</option><option>VOID</option></select>
-    <button type="submit">Finalize & settle</button>
+    <button type="submit">Settle now</button>
   </form>
 </div>
 {% endif %}

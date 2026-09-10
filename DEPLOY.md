@@ -32,7 +32,7 @@ A missing `FLASK_SECRET_KEY` generates a temporary process-local secret. This is
 
 ## Preview access
 
-A shared access code enables unverified NetID access for non-admin accounts. Anyone with that code can claim another non-admin NetID. Use only with disposable preview data and trusted testers. Administrator accounts require CAS unless development bypass is explicitly enabled.
+A shared access code enables unverified NetID access (including admin / bootstrap NetIDs) until production CAS is allowlisted. Anyone with the code can claim any NetID. Use only with trusted testers.
 
 ## Email
 

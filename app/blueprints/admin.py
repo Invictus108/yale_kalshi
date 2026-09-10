@@ -4,7 +4,7 @@ from flask_login import current_user
 from app.blueprints.auth import admin_required
 from app.extensions import db
 from app.models import Market, User, utcnow
-from app.services.resolve import close_if_expired, finalize_resolution
+from app.services.resolve import finalize_resolution, refresh_market
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -12,16 +12,13 @@ admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 @admin_bp.route("/")
 @admin_required
 def dashboard():
-    for market in Market.query.filter_by(status="open").all():
-        close_if_expired(market)
-    db.session.flush()
+    for market in Market.query.filter(Market.status.in_(["open", "proposed"])).all():
+        refresh_market(market)
+    db.session.commit()
     pending = Market.query.filter_by(status="pending").order_by(Market.created_at.asc()).all()
     needs_resolve = Market.query.filter(
         Market.status.in_(["closed", "proposed", "disputed"])
     ).order_by(Market.closes_at.asc()).all()
-    for m in needs_resolve:
-        close_if_expired(m)
-    db.session.commit()
     users = User.query.order_by(User.created_at.desc()).limit(100).all()
     return render_template(
         "admin/dashboard.html",

@@ -1,16 +1,16 @@
 from datetime import datetime, timedelta, timezone
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.blueprints.auth import admin_required
 from app.extensions import db
 from app.models import ChatMessage, Market, Trade, utcnow
 from app.services.resolve import (
-    close_if_expired,
     dispute_resolution,
     finalize_resolution,
     propose_resolution,
+    refresh_market,
 )
 from app.services.trading import cash_out, execute_trade, quote_sell_proceeds
 
@@ -88,7 +88,7 @@ def create():
 @markets_bp.route("/<int:market_id>")
 def detail(market_id: int):
     market = Market.query.get_or_404(market_id)
-    close_if_expired(market)
+    refresh_market(market)
     db.session.commit()
     trades = (
         Trade.query.filter_by(market_id=market.id)
@@ -129,7 +129,7 @@ def detail(market_id: int):
 @login_required
 def trade(market_id: int):
     market = Market.query.get_or_404(market_id)
-    close_if_expired(market)
+    refresh_market(market)
     side = request.form.get("side", "YES")
     action = request.form.get("action", "BUY")
     try:
@@ -154,7 +154,7 @@ def trade(market_id: int):
 def cash_out_route(market_id: int):
     """Sell all YES or NO holdings back to the market at the live AMM price."""
     market = Market.query.get_or_404(market_id)
-    close_if_expired(market)
+    refresh_market(market)
     side = (request.form.get("side") or "YES").upper()
     try:
         trade = cash_out(user_id=current_user.id, market=market, side=side)
@@ -204,7 +204,11 @@ def propose(market_id: int):
             evidence=request.form.get("evidence", ""),
         )
         db.session.commit()
-        flash("Resolution proposed. Dispute window started.", "success")
+        hours = current_app.config["DISPUTE_HOURS"]
+        flash(
+            f"Resolution proposed. Auto-settles in {hours}h if undisputed; admin can settle sooner.",
+            "success",
+        )
     except ValueError as exc:
         db.session.rollback()
         flash(str(exc), "danger")

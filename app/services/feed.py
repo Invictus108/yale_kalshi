@@ -5,7 +5,7 @@ from sqlalchemy import func
 
 from app.models import Market, Position, Trade, User
 from app.services.friends import friend_ids
-from app.services.resolve import close_if_expired
+from app.services.resolve import refresh_market
 from app.services.users import portfolio_value
 
 
@@ -35,7 +35,8 @@ def popular_feed(*, viewer: User | None, limit: int = 40) -> list[dict]:
     statuses = ["open", "closed", "proposed", "disputed"]
     markets = Market.query.filter(Market.status.in_(statuses)).all()
     for m in markets:
-        close_if_expired(m)
+        refresh_market(m)
+    markets = [m for m in markets if m.status in statuses]
 
     # trade counts
     counts = dict(

@@ -13,7 +13,7 @@ python run.py
 
 Configure a local `.env` using `.env.example`. Set a strong, persistent `FLASK_SECRET_KEY` and your `BOOTSTRAP_ADMIN_NETID`. Open [localhost:5000](http://localhost:5000); `APP_BASE_URL` must match the address used for CAS.
 
-Yale CAS is the normal sign-in method. For a local development account, explicitly set `DEV_AUTH_BYPASS=true`. Keep it false on public hosts. Shared-code preview login is opt-in via `FRIEND_ACCESS_CODE`; it does not verify Yale identity, and administrators must use CAS outside development mode.
+Yale CAS is the normal sign-in method. For a local development account, explicitly set `DEV_AUTH_BYPASS=true`. Keep it false on public hosts. Shared-code login is opt-in via `FRIEND_ACCESS_CODE` (including admins) until CAS is allowlisted; it does not verify Yale identity.
 
 Demo data is off by default. Existing `.env` values still override defaults.
 

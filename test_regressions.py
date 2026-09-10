@@ -16,7 +16,11 @@ from app.services.amm import trade_cost
 from app.services.demo_seed import _seed_admin_balance_history
 from app.services.friends import conversation, search_users, send_request
 from app.services.ledger import apply_entry
-from app.services.resolve import finalize_resolution, propose_resolution
+from app.services.resolve import (
+    finalize_resolution,
+    maybe_auto_resolve,
+    propose_resolution,
+)
 from app.services.trading import execute_trade
 from app.services.users import get_or_create_user
 from config import Config
@@ -101,15 +105,41 @@ class RegressionTests(unittest.TestCase):
             finalize_resolution(market, admin_id=self.admin.id, outcome='YES')
         market.closes_at = utcnow() - timedelta(minutes=1)
         propose_resolution(market, proposer_id=self.user.id, outcome='YES', evidence='Official score')
-        with self.assertRaises(ValueError):
-            finalize_resolution(market, admin_id=self.admin.id, outcome='YES')
-        market.dispute_deadline = utcnow() - timedelta(seconds=1)
+        # Admin settle ends the dispute window immediately.
         before = self.user.ledger.balance
         finalize_resolution(market, admin_id=self.admin.id, outcome='YES')
         self.assertAlmostEqual(self.user.ledger.balance, before + 20)
         with self.assertRaises(ValueError):
             finalize_resolution(market, admin_id=self.admin.id, outcome='YES')
         self.assertEqual(LedgerEntry.query.filter_by(kind='settle').count(), 1)
+
+    def test_auto_resolve_after_dispute_window(self):
+        market = self.market()
+        execute_trade(user_id=self.user.id, market=market, side='YES', action='BUY', shares=10)
+        market.closes_at = utcnow() - timedelta(minutes=1)
+        propose_resolution(market, proposer_id=self.user.id, outcome='YES', evidence='box score')
+        db.session.commit()
+        self.assertFalse(maybe_auto_resolve(market))
+        market.dispute_deadline = utcnow() - timedelta(seconds=1)
+        before = self.user.ledger.balance
+        self.assertTrue(maybe_auto_resolve(market))
+        self.assertEqual(market.status, 'resolved')
+        self.assertEqual(market.final_outcome, 'YES')
+        self.assertAlmostEqual(self.user.ledger.balance, before + 10)
+        self.assertFalse(maybe_auto_resolve(market))
+
+    def test_disputed_does_not_auto_resolve(self):
+        market = self.market()
+        market.closes_at = utcnow() - timedelta(minutes=1)
+        propose_resolution(market, proposer_id=self.user.id, outcome='NO', evidence='source')
+        market.status = 'disputed'
+        market.dispute_reason = 'Wrong source'
+        market.dispute_deadline = utcnow() - timedelta(hours=1)
+        db.session.commit()
+        self.assertFalse(maybe_auto_resolve(market))
+        self.assertEqual(market.status, 'disputed')
+        finalize_resolution(market, admin_id=self.admin.id, outcome='VOID')
+        self.assertEqual(market.status, 'void')
 
     def test_csrf_and_post_only_logout(self):
         self.sign_in()
@@ -119,20 +149,24 @@ class RegressionTests(unittest.TestCase):
         self.assertEqual(self.post('/settings', display_name='Good name').status_code, 302)
         self.assertEqual(User.query.filter_by(netid='student1').one().display_name, 'Good name')
 
-    def test_safe_redirects_and_admin_preview_restriction(self):
+    def test_safe_redirects_and_access_code_allows_admin(self):
         self.client.get('/login')
         with self.client.session_transaction() as session:
             session['csrf_token'] = 'test-token'
         response = self.post('/login?next=https://evil.example', netid='student1')
         self.assertEqual(response.location, '/')
         self.post('/logout')
-        self.app.config.update(DEV_AUTH_BYPASS=False, FRIEND_ACCESS_CODE='preview')
+        self.app.config.update(
+            DEV_AUTH_BYPASS=False,
+            FRIEND_ACCESS_CODE='preview',
+            ENABLE_NETID_LOGIN=True,
+        )
         with self.client.session_transaction() as session:
             session['csrf_token'] = 'test-token'
         response = self.post('/login', netid='testadmin', access_code='preview')
-        self.assertEqual(response.location, '/login')
+        self.assertEqual(response.location, '/')
         with self.client.session_transaction() as session:
-            self.assertNotIn('_user_id', session)
+            self.assertIn('_user_id', session)
 
     def test_admin_queue_and_reject_state(self):
         expired_id = self.market(expired=True).id

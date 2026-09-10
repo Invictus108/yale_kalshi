@@ -17,7 +17,6 @@ from flask_login import current_user, login_required, login_user, logout_user
 from app.services import cas as cas_svc
 from app.services.users import get_or_create_user
 from app.security import safe_next
-from app.models import User
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -76,13 +75,8 @@ def login():
                 cas_status=cas_svc.cas_public_status(),
             )
 
-        existing = User.query.filter_by(netid=netid).first()
-        if not current_app.config.get("DEV_AUTH_BYPASS") and (
-            netid == current_app.config["BOOTSTRAP_ADMIN_NETID"]
-            or (existing and existing.is_admin)
-        ):
-            flash("Administrators must sign in with Yale CAS.", "warning")
-            return redirect(url_for("auth.login"))
+        # Until CAS is allowlisted for production, access-code login is open to
+        # everyone with the code — including bootstrap/admin NetIDs.
         user = get_or_create_user(netid)
         login_user(user, remember=True)
         flash(f"Signed in as {netid}.", "success")
