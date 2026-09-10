@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard · Yale Markets{% endblock %}
+{% block content %}
+<header class="feed-head">
+  <div>
+    <h1>Leaderboard</h1>
+    <p>Portfolio value and earnings vs starting play balance.</p>
+  </div>
+</header>
+
+<div class="panel">
+  <table class="table">
+    <thead><tr><th>#</th><th>Trader</th><th>Cash</th><th>Earnings</th><th>Total</th></tr></thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>
+          <a href="{{ url_for('social.profile', user_id=row.user.id) }}">{{ row.user.public_name }}</a>
+          {% if row.user.is_admin %}<span class="meta"> · admin</span>{% endif %}
+        </td>
+        <td>{{ '%.0f'|format(row.cash) }}</td>
+        <td class="{% if row.earnings >= 0 %}pos{% else %}neg{% endif %}">{{ '%+.0f'|format(row.earnings) }}</td>
+        <td><strong>{{ '%.0f'|format(row.value) }}</strong></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

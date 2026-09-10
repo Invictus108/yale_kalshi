@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Create market · Yale Markets{% endblock %}
+{% block content %}
+<div class="panel" style="max-width:640px;margin-left:auto;margin-right:auto;">
+  <h2>Propose a market</h2>
+  <p class="meta">Stays pending until an admin approves. Write criteria so anyone can score the outcome from a public source.</p>
+  <form method="post">
+    <label for="title">Title</label>
+    <input id="title" name="title" maxlength="200" required placeholder="Will Yale beat Harvard in The Game?">
+
+    <label for="description">Description</label>
+    <textarea id="description" name="description" rows="3" required></textarea>
+
+    <label for="resolution_criteria">Resolution criteria</label>
+    <textarea id="resolution_criteria" name="resolution_criteria" rows="4" required
+      placeholder="Resolves YES if … per the official box score on [date]."></textarea>
+
+    <label for="resolution_source">Resolution source</label>
+    <input id="resolution_source" name="resolution_source" required placeholder="Official athletics URL, YDN, etc.">
+
+    <label for="closes_at">Trading closes</label>
+    <input id="closes_at" name="closes_at" type="datetime-local" required>
+
+    <div class="btn-row" style="margin-top:1rem;">
+      <button type="submit">Submit for approval</button>
+      <a class="btn ghost" href="{{ url_for('main.index') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

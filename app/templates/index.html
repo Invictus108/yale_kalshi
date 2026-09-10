@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Yale Markets{% endblock %}
+{% block content %}
+
+{% if not current_user.is_authenticated %}
+<section class="hero-stage">
+  <div class="hero-inner">
+    <h1 class="hero-brand">Yale <em>Markets</em></h1>
+    <p class="hero-lead">Play-money prediction markets for campus — trade what happens at Yale with friends.</p>
+    <div class="hero-actions">
+      <a class="btn btn-on-dark" href="{{ url_for('auth.login') }}">Sign in with Yale CAS</a>
+    </div>
+  </div>
+</section>
+{% else %}
+<header class="feed-head">
+  <div>
+    <h1>Popular now</h1>
+    <p>Markets ranked by activity. Friends show up when they’re in.</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('markets.create') }}">Create</a>
+    <a class="btn ghost" href="{{ url_for('social.people') }}">People</a>
+  </div>
+</header>
+{% endif %}
+
+{% if current_user.is_authenticated or feed %}
+<section class="feed-list" {% if not current_user.is_authenticated %}style="margin-top:0"{% endif %}>
+  {% if not current_user.is_authenticated and feed %}
+    <header class="feed-head">
+      <div>
+        <h1>Open markets</h1>
+        <p>Browse without an account — sign in to trade.</p>
+      </div>
+    </header>
+  {% endif %}
+
+  {% for card in feed %}
+    {% set m = card.market %}
+    <a class="market-row" href="{{ url_for('markets.detail', market_id=m.id) }}">
+      <div class="market-row-top">
+        <span class="badge {{ m.status }}">{{ m.status }}</span>
+        <span class="meta">{{ card.trade_count }} trades · {{ card.trader_count }} traders · {{ m.creator.public_name }}</span>
+      </div>
+      <h2>{{ m.title }}</h2>
+      <p class="blurb">{{ m.description[:140] }}{% if m.description|length > 140 %}…{% endif %}</p>
+      {% if card.friends %}
+        <div class="friend-line">
+          <span class="label">Friends:</span>
+          {% for f in card.friends[:5] %}
+            <span>{{ f.public_name }}{% if not loop.last %},{% endif %}</span>
+          {% endfor %}
+          {% if card.friends|length > 5 %}<span class="meta">+{{ card.friends|length - 5 }}</span>{% endif %}
+        </div>
+      {% endif %}
+      {% if m.status == 'open' %}
+      <div class="prices">
+        <div class="price yes"><small>Yes</small><span>{{ '%.0f'|format(m.price_yes * 100) }}¢</span></div>
+        <div class="price no"><small>No</small><span>{{ '%.0f'|format(m.price_no * 100) }}¢</span></div>
+      </div>
+      {% else %}
+        <p class="meta">Closes {{ m.closes_at.strftime('%b %d, %Y · %H:%M') }} UTC</p>
+      {% endif %}
+    </a>
+  {% else %}
+    <div class="empty-state">
+      {% if current_user.is_authenticated %}
+        No markets yet. <a href="{{ url_for('markets.create') }}">Create the first one</a>.
+      {% else %}
+        No open markets right now. Sign in to create one.
+      {% endif %}
+    </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% endblock %}

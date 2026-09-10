@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Admin · Yale Markets{% endblock %}
+{% block content %}
+<header class="feed-head">
+  <div>
+    <h1>Admin</h1>
+    <p>Approve markets, resolve disputes, manage admins.</p>
+  </div>
+</header>
+
+<div class="panel">
+  <h3>Pending approval</h3>
+  {% for m in pending %}
+    <div class="friend-row" style="align-items:flex-start;flex-direction:column;gap:0.35rem;">
+      <div>
+        <strong><a href="{{ url_for('markets.detail', market_id=m.id) }}">{{ m.title }}</a></strong>
+        <div class="meta">by {{ m.creator.public_name }} · {{ m.creator.netid }}</div>
+        <p style="margin:0.35rem 0">{{ m.resolution_criteria }}</p>
+      </div>
+      <div class="btn-row">
+        <form method="post" action="{{ url_for('admin.approve', market_id=m.id) }}">
+          <button type="submit">Approve</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.reject', market_id=m.id) }}" style="display:flex;gap:0.4rem;align-items:center;">
+          <input name="reason" placeholder="Rejection reason" style="margin:0;min-width:12rem;">
+          <button class="danger" type="submit">Reject</button>
+        </form>
+      </div>
+    </div>
+  {% else %}
+    <p class="meta">Nothing pending.</p>
+  {% endfor %}
+</div>
+
+<div class="panel">
+  <h3>Needs resolution</h3>
+  {% for m in needs_resolve %}
+    <div class="friend-row">
+      <div style="flex:1">
+        <strong><a href="{{ url_for('markets.detail', market_id=m.id) }}">{{ m.title }}</a></strong>
+        <span class="badge {{ m.status }}">{{ m.status }}</span>
+        {% if m.proposed_outcome %}<div class="meta">Proposed {{ m.proposed_outcome }}</div>{% endif %}
+      </div>
+      <form method="post" action="{{ url_for('admin.finalize', market_id=m.id) }}" style="display:flex;gap:0.4rem;align-items:center;">
+        <select name="outcome" style="width:auto;margin:0;">
+          <option>YES</option><option>NO</option><option>VOID</option>
+        </select>
+        <button type="submit" style="margin:0">Finalize</button>
+      </form>
+    </div>
+  {% else %}
+    <p class="meta">Queue empty.</p>
+  {% endfor %}
+</div>
+
+<div class="panel">
+  <h3>Users</h3>
+  <table class="table">
+    <thead><tr><th>Public</th><th>NetID</th><th>Admin</th><th></th></tr></thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td><a href="{{ url_for('social.profile', user_id=u.id) }}">{{ u.public_name }}</a></td>
+        <td><code>{{ u.netid }}</code></td>
+        <td>{{ 'yes' if u.is_admin else 'no' }}</td>
+        <td>
+          {% if u.id != current_user.id %}
+          <form method="post" action="{{ url_for('admin.toggle_admin', user_id=u.id) }}">
+            <button class="ghost" type="submit" style="margin:0">{{ 'Demote' if u.is_admin else 'Make admin' }}</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

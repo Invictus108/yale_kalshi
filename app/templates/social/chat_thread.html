@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Chat with {{ other.public_name }} · Yale Markets{% endblock %}
+{% block content %}
+<div class="panel" style="max-width:680px;margin:0 auto;">
+  <div class="feed-head" style="margin-bottom:1rem;">
+    <div>
+      <h1 style="font-size:1.75rem;margin:0;">
+        <a href="{{ url_for('social.profile', user_id=other.id) }}">{{ other.public_name }}</a>
+      </h1>
+      <p class="meta" style="margin:0.25rem 0 0"><a href="{{ url_for('social.chat_inbox') }}">← All chats</a></p>
+    </div>
+  </div>
+  <div class="chat">
+    {% for msg in messages %}
+      <div class="msg {% if msg.sender_id == current_user.id %}mine{% endif %}">
+        <span class="who">{% if msg.sender_id == current_user.id %}You{% else %}{{ other.public_name }}{% endif %}</span>
+        <span class="when">{{ msg.created_at.strftime('%m/%d %H:%M') }}</span>
+        <div>{{ msg.body }}</div>
+      </div>
+    {% else %}
+      <p class="meta">Say hi — first message starts the thread.</p>
+    {% endfor %}
+  </div>
+  <form method="post">
+    <label for="body">Message</label>
+    <input id="body" name="body" maxlength="2000" required autocomplete="off" autofocus>
+    <button type="submit">Send</button>
+  </form>
+</div>
+{% endblock %}

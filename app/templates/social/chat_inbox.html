@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Chat · Yale Markets{% endblock %}
+{% block content %}
+<header class="feed-head">
+  <div>
+    <h1>Messages</h1>
+    <p>Direct chat with friends.</p>
+  </div>
+  <div class="actions">
+    <a class="btn ghost" href="{{ url_for('social.people') }}">Find people</a>
+  </div>
+</header>
+
+<div class="panel">
+  {% if threads %}
+  <table class="table">
+    <thead><tr><th>Friend</th><th>Latest</th></tr></thead>
+    <tbody>
+      {% for t in threads %}
+      <tr>
+        <td><a href="{{ url_for('social.chat_thread', user_id=t.friend.id) }}">{{ t.friend.public_name }}</a></td>
+        <td class="meta">
+          {% if t.latest %}
+            {{ t.latest.body[:90] }}{% if t.latest.body|length > 90 %}…{% endif %}
+            · {{ t.latest.created_at.strftime('%m/%d %H:%M') }}
+          {% else %}
+            No messages yet
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">Add friends to start chatting.</div>
+  {% endif %}
+</div>
+{% endblock %}

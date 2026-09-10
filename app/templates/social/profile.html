@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ profile_user.public_name }} · Yale Markets{% endblock %}
+{% block content %}
+<div class="panel" style="max-width:640px;margin:0 auto;">
+  <h2>{{ profile_user.public_name }}</h2>
+  <p class="meta">
+    {% if not profile_user.is_anonymous_display %}
+      NetID {{ profile_user.netid }}
+    {% else %}
+      Playing anonymously
+    {% endif %}
+    {% if profile_user.is_admin %} · admin{% endif %}
+  </p>
+
+  <div class="stat-grid">
+    <div class="stat"><div class="stat-label">Earnings</div><div class="stat-value {% if stats.earnings >= 0 %}pos{% else %}neg{% endif %}">{{ '%+.0f'|format(stats.earnings) }}</div></div>
+    <div class="stat"><div class="stat-label">Portfolio</div><div class="stat-value">{{ '%.0f'|format(stats.portfolio) }}</div></div>
+    <div class="stat"><div class="stat-label">Cash</div><div class="stat-value">{{ '%.0f'|format(stats.cash) }}</div></div>
+    <div class="stat"><div class="stat-label">Trades</div><div class="stat-value">{{ stats.trade_count }}</div></div>
+  </div>
+  <p class="meta">Earnings = portfolio − starting {{ '%.0f'|format(stats.seed) }} pts.</p>
+
+  <div class="btn-row" style="margin-top:1rem;">
+  {% if relation == 'self' %}
+    <a class="btn ghost" href="{{ url_for('auth.settings') }}">Edit profile</a>
+  {% elif relation == 'friends' %}
+    <a class="btn" href="{{ url_for('social.chat_thread', user_id=profile_user.id) }}">Message</a>
+    <form method="post" action="{{ url_for('social.unfriend', user_id=profile_user.id) }}">
+      <button class="ghost" type="submit">Unfriend</button>
+    </form>
+  {% elif relation == 'outgoing' %}
+    <span class="badge pending">Request pending</span>
+  {% elif relation == 'incoming' %}
+    <p class="meta">They sent you a request — manage it on <a href="{{ url_for('social.people') }}">People</a>.</p>
+  {% else %}
+    <form method="post" action="{{ url_for('social.friend_request', user_id=profile_user.id) }}">
+      <button type="submit">Add friend</button>
+    </form>
+  {% endif %}
+  </div>
+</div>
+{% endblock %}

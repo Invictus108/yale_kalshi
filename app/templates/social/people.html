@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}People · Yale Markets{% endblock %}
+{% block content %}
+<header class="feed-head">
+  <div>
+    <h1>People</h1>
+    <p>Find classmates, compare earnings, add friends.</p>
+  </div>
+  <div class="actions">
+    <a class="btn ghost" href="{{ url_for('social.chat_inbox') }}">Messages</a>
+  </div>
+</header>
+
+<div class="panel">
+  <form method="get" action="{{ url_for('social.people') }}">
+    <label for="q">Search by name or NetID</label>
+    <input id="q" name="q" value="{{ q }}" placeholder="AnonFox… or jd1234" autofocus>
+    <button type="submit">Search</button>
+  </form>
+</div>
+
+{% if incoming %}
+<div class="panel">
+  <h3>Friend requests</h3>
+  {% for fr in incoming %}
+    <div class="friend-row">
+      <a href="{{ url_for('social.profile', user_id=fr.requester.id) }}"><strong>{{ fr.requester.public_name }}</strong></a>
+      <form method="post" action="{{ url_for('social.friend_accept', friendship_id=fr.id) }}" style="display:inline;">
+        <button type="submit" style="margin-top:0">Accept</button>
+      </form>
+      <form method="post" action="{{ url_for('social.friend_decline', friendship_id=fr.id) }}" style="display:inline;">
+        <button class="ghost" type="submit" style="margin-top:0">Decline</button>
+      </form>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if q %}
+<div class="panel">
+  <h3>Results</h3>
+  <table class="table">
+    <thead><tr><th>Name</th><th>Earnings</th><th>Portfolio</th><th></th></tr></thead>
+    <tbody>
+      {% for u in results %}
+        {% set s = stats_for(u) %}
+        <tr>
+          <td><a href="{{ url_for('social.profile', user_id=u.id) }}">{{ u.public_name }}</a></td>
+          <td class="{% if s.earnings >= 0 %}pos{% else %}neg{% endif %}">{{ '%+.0f'|format(s.earnings) }}</td>
+          <td>{{ '%.0f'|format(s.portfolio) }}</td>
+          <td>
+            {% set rel = relation(u.id) %}
+            {% if rel == 'self' %}<span class="meta">you</span>
+            {% elif rel == 'friends' %}<a href="{{ url_for('social.chat_thread', user_id=u.id) }}">Message</a>
+            {% elif rel == 'outgoing' %}<span class="meta">pending</span>
+            {% elif rel == 'incoming' %}<span class="meta">respond above</span>
+            {% else %}
+              <form method="post" action="{{ url_for('social.friend_request', user_id=u.id) }}">
+                <button type="submit" style="margin-top:0">Add friend</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="meta">No matches.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="panel">
+  <h3>Your friends</h3>
+  {% if my_friends %}
+  <table class="table">
+    <thead><tr><th>Name</th><th>Earnings</th><th></th></tr></thead>
+    <tbody>
+      {% for u in my_friends %}
+        {% set s = stats_for(u) %}
+        <tr>
+          <td><a href="{{ url_for('social.profile', user_id=u.id) }}">{{ u.public_name }}</a></td>
+          <td class="{% if s.earnings >= 0 %}pos{% else %}neg{% endif %}">{{ '%+.0f'|format(s.earnings) }}</td>
+          <td><a href="{{ url_for('social.chat_thread', user_id=u.id) }}">Chat</a></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="meta">No friends yet — search above.</p>
+  {% endif %}
+</div>
+{% endblock %}

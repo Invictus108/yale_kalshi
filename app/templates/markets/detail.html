@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}{{ market.title }} · Yale Markets{% endblock %}
+{% block content %}
+<div class="panel detail-hero">
+  <div class="market-row-top">
+    <span class="badge {{ market.status }}">{{ market.status }}</span>
+    <span class="meta">
+      by <a href="{{ url_for('social.profile', user_id=market.creator.id) }}">{{ market.creator.public_name }}</a>
+      · closes {{ market.closes_at.strftime('%b %d, %Y · %H:%M') }} UTC
+    </span>
+  </div>
+  <h1>{{ market.title }}</h1>
+  <p>{{ market.description }}</p>
+
+  <div class="criteria-box">
+    <strong>Resolution criteria</strong>
+    {{ market.resolution_criteria }}
+    <p class="meta" style="margin:0.5rem 0 0">Source: {{ market.resolution_source }}</p>
+  </div>
+
+  {% if market.status == 'open' %}
+  <div class="prices" style="margin-top:1.1rem;">
+    <div class="price yes"><small>Yes</small><span>{{ '%.1f'|format(market.price_yes * 100) }}¢</span></div>
+    <div class="price no"><small>No</small><span>{{ '%.1f'|format(market.price_no * 100) }}¢</span></div>
+  </div>
+  {% endif %}
+
+  {% if market.proposed_outcome %}
+    <p class="meta" style="margin-top:1rem;">
+      Proposed <strong>{{ market.proposed_outcome }}</strong>
+      {% if market.dispute_deadline %} · dispute until {{ market.dispute_deadline.strftime('%b %d %H:%M') }} UTC{% endif %}
+    </p>
+    <p>{{ market.proposal_evidence }}</p>
+    {% if market.dispute_reason %}<p><strong>Dispute:</strong> {{ market.dispute_reason }}</p>{% endif %}
+  {% endif %}
+  {% if market.final_outcome %}
+    <p style="margin-top:1rem"><span class="badge resolved">Final {{ market.final_outcome }}</span></p>
+  {% endif %}
+</div>
+
+{% if market.status == 'open' and current_user.is_authenticated %}
+<div class="row">
+  <div class="panel trade-form">
+    <h3>Trade</h3>
+    {% if my_pos %}
+      <p class="meta">You hold YES {{ '%.2f'|format(my_pos.yes_shares) }} · NO {{ '%.2f'|format(my_pos.no_shares) }}</p>
+    {% endif %}
+    <form method="post" action="{{ url_for('markets.trade', market_id=market.id) }}">
+      <label>Side</label>
+      <div class="side-toggle">
+        <label class="choice"><input type="radio" name="side" value="YES" checked> YES</label>
+        <label class="choice"><input type="radio" name="side" value="NO"> NO</label>
+      </div>
+      <label>Action</label>
+      <select name="action"><option>BUY</option><option>SELL</option></select>
+      <label>Shares</label>
+      <input name="shares" type="number" step="0.01" min="0.01" value="5" required>
+      <button type="submit">Place trade</button>
+    </form>
+  </div>
+  <div class="panel">
+    <h3>Recent trades</h3>
+    <table class="table">
+      <thead><tr><th>Who</th><th>Act</th><th>Avg</th></tr></thead>
+      <tbody>
+        {% for t in trades %}
+        <tr>
+          <td><a href="{{ url_for('social.profile', user_id=t.user.id) }}">{{ t.user.public_name }}</a></td>
+          <td>{{ t.action }} {{ '%.2f'|format(t.shares) }} {{ t.side }}</td>
+          <td>{{ '%.1f'|format(t.avg_price * 100) }}¢</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="meta">No trades yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if current_user.is_authenticated and market.status in ['closed', 'disputed'] and (current_user.id == market.creator_id or current_user.is_admin) %}
+<div class="panel">
+  <h3>Propose resolution</h3>
+  <form method="post" action="{{ url_for('markets.propose', market_id=market.id) }}">
+    <label>Outcome</label>
+    <select name="outcome"><option>YES</option><option>NO</option></select>
+    <label>Evidence</label>
+    <textarea name="evidence" rows="3" required></textarea>
+    <button type="submit">Propose</button>
+  </form>
+</div>
+{% endif %}
+
+{% if current_user.is_authenticated and market.status == 'proposed' %}
+<div class="panel">
+  <h3>Dispute proposal</h3>
+  <form method="post" action="{{ url_for('markets.dispute', market_id=market.id) }}">
+    <label>Reason</label>
+    <textarea name="reason" rows="2" required></textarea>
+    <button class="danger" type="submit">File dispute</button>
+  </form>
+</div>
+{% endif %}
+
+{% if current_user.is_authenticated and current_user.is_admin and market.status in ['closed', 'proposed', 'disputed'] %}
+<div class="panel">
+  <h3>Admin finalize</h3>
+  <form method="post" action="{{ url_for('markets.finalize', market_id=market.id) }}">
+    <label>Final outcome</label>
+    <select name="outcome"><option>YES</option><option>NO</option><option>VOID</option></select>
+    <button type="submit">Finalize & settle</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="panel" id="chat">
+  <h3>Market chat</h3>
+  <div class="chat">
+    {% for msg in messages %}
+      <div class="msg {% if current_user.is_authenticated and msg.user_id == current_user.id %}mine{% endif %}">
+        <span class="who">{{ msg.user.public_name }}</span>
+        <span class="when">{{ msg.created_at.strftime('%m/%d %H:%M') }}</span>
+        <div>{{ msg.body }}</div>
+      </div>
+    {% else %}
+      <p class="meta">No messages yet.</p>
+    {% endfor %}
+  </div>
+  {% if current_user.is_authenticated %}
+  <form method="post" action="{{ url_for('markets.chat', market_id=market.id) }}">
+    <label for="body">Message</label>
+    <input id="body" name="body" maxlength="1000" required placeholder="Keep it civil — NetIDs stay private.">
+    <button type="submit">Send</button>
+  </form>
+  {% else %}
+  <p class="meta"><a href="{{ url_for('auth.login') }}">Sign in</a> to chat.</p>
+  {% endif %}
+</div>
+{% endblock %}
