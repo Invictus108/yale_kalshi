@@ -154,3 +154,5 @@ The displayed YES/NO price is the price of the next small trade. Cash-out estima
 Internal reports and handoff notes are intentionally ignored by Git.
 
 Made for campus. Powered by your perspective.
+
+**Idea credit:** Kellen Gong
