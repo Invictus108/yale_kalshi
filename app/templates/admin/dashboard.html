@@ -11,20 +11,21 @@
 <div class="panel">
   <h3>Pending approval</h3>
   {% for m in pending %}
-    <div class="friend-row" style="align-items:flex-start;flex-direction:column;gap:0.35rem;">
+    <div class="friend-row moderation-item">
       <div>
         <strong><a href="{{ url_for('markets.detail', market_id=m.id) }}">{{ m.title }}</a></strong>
         <div class="meta">by {{ m.creator.public_name }} · {{ m.creator.netid }}</div>
         <p style="margin:0.35rem 0">{{ m.resolution_criteria }}</p>
       </div>
-      <div class="btn-row">
+      <div class="moderation-actions">
         <form method="post" action="{{ url_for('admin.approve', market_id=m.id) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit">Approve</button>
         </form>
-        <form method="post" action="{{ url_for('admin.reject', market_id=m.id) }}" style="display:flex;gap:0.4rem;align-items:center;">
+        <form class="rejection-form" method="post" action="{{ url_for('admin.reject', market_id=m.id) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <input name="reason" placeholder="Rejection reason" style="margin:0;min-width:12rem;">
+          <label class="sr-only" for="rejection-reason-{{ m.id }}">Rejection reason for {{ m.title }}</label>
+          <input id="rejection-reason-{{ m.id }}" name="reason" placeholder="Rejection reason (optional)">
           <button class="danger" type="submit">Reject</button>
         </form>
       </div>

@@ -23,3 +23,42 @@ button,.btn{display:inline-flex;align-items:center;justify-content:center;gap:10
 @media(max-width:900px){.topbar{flex-wrap:wrap;min-height:72px}.nav-toggle{display:inline-flex;margin:0;background:var(--yale-soft);color:var(--yale)}.nav{display:none;flex-direction:column;align-items:stretch;width:100%;gap:4px}.nav.open{display:flex}.nav a{padding:12px;font-size:13px}.nav .nav-cta{margin:0!important}.nav form button{width:100%;justify-content:flex-start}.market-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.points-note{display:none}.row{grid-template-columns:1fr}.hero-note{font-size:10px}.campus-hero{grid-template-columns:1.4fr 1fr;gap:15px;padding:30px}.hero-art{padding:0}.art-coordinate{font-size:6px}.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.footer{flex-wrap:wrap}.footer span:last-child{margin-left:auto}}
 @media(max-width:600px){.wrap{padding:20px 16px 40px}.topbar{padding:16px 20px}.campus-hero{grid-template-columns:1fr;padding:30px 24px;min-height:auto;border-radius:12px}.campus-hero h1{font-size:37px}.hero-art{display:none}.hero-copy>p:not(.eyebrow){font-size:12px}.hero-actions{gap:13px}.market-intro{gap:12px;justify-content:space-between;font-size:9px;padding-block:19px}.market-intro strong{display:block;margin-bottom:3px}.feed-head{margin-top:28px}.feed-head h2{font-size:25px}.text-link{font-size:10px}.feed-toolbar{align-items:stretch;flex-direction:column;gap:12px}.filter-group{justify-content:space-between}.filter{padding:8px 10px;font-size:10px}.search-field{width:100%}.market-grid{grid-template-columns:1fr}.market-card{padding:22px}.market-card h3{font-size:18px}.blurb{font-size:12px}.community-strip{padding:24px;align-items:flex-start;flex-direction:column}.community-strip h2{font-size:24px}.footer{flex-direction:column;align-items:flex-start;gap:7px;padding:24px}.footer span:last-child{margin-left:0}.panel{padding:20px}.stat{padding:16px}.stat-value{font-size:24px}.login-panel{margin:8px auto;padding:26px}.feed-head .actions{flex-wrap:wrap}.friend-row .btn-row{width:100%}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition:none!important;animation:none!important}}
+
+/* Keep each approval action aligned independently of generic form wrapping. */
+.moderation-item {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 12px;
+}
+.moderation-actions {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  width: 100%;
+  max-width: 640px;
+}
+.moderation-actions form {
+  margin: 0;
+  min-width: 0;
+}
+.rejection-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.moderation-actions button,
+.moderation-actions input {
+  margin: 0;
+  min-width: 0;
+  min-height: 44px;
+}
+@media (max-width: 600px) {
+  .moderation-actions,
+  .rejection-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .moderation-actions button {
+    width: 100%;
+  }
+}
