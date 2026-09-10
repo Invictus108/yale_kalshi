@@ -5,6 +5,7 @@ from app.extensions import db
 from app.models import User
 from app.services import friends as friends_svc
 from app.services.feed import user_stats
+from app.security import safe_next
 
 social_bp = Blueprint("social", __name__)
 
@@ -52,7 +53,7 @@ def friend_request(user_id: int):
     except ValueError as exc:
         db.session.rollback()
         flash(str(exc), "warning")
-    return redirect(request.referrer or url_for("social.profile", user_id=user_id))
+    return redirect(safe_next(request.referrer) if request.referrer else url_for("social.profile", user_id=user_id))
 
 
 @social_bp.route("/friends/accept/<int:friendship_id>", methods=["POST"])
@@ -65,7 +66,7 @@ def friend_accept(friendship_id: int):
     except ValueError as exc:
         db.session.rollback()
         flash(str(exc), "danger")
-    return redirect(request.referrer or url_for("social.people"))
+    return redirect(safe_next(request.referrer) if request.referrer else url_for("social.people"))
 
 
 @social_bp.route("/friends/decline/<int:friendship_id>", methods=["POST"])
@@ -78,7 +79,7 @@ def friend_decline(friendship_id: int):
     except ValueError as exc:
         db.session.rollback()
         flash(str(exc), "danger")
-    return redirect(request.referrer or url_for("social.people"))
+    return redirect(safe_next(request.referrer) if request.referrer else url_for("social.people"))
 
 
 @social_bp.route("/friends/unfriend/<int:user_id>", methods=["POST"])
@@ -91,7 +92,7 @@ def unfriend(user_id: int):
     except ValueError as exc:
         db.session.rollback()
         flash(str(exc), "warning")
-    return redirect(request.referrer or url_for("social.profile", user_id=user_id))
+    return redirect(safe_next(request.referrer) if request.referrer else url_for("social.profile", user_id=user_id))
 
 
 @social_bp.route("/chat")

@@ -5,6 +5,7 @@
   <h2>Propose a market</h2>
   <p class="meta">Stays pending until an admin approves. Write criteria so anyone can score the outcome from a public source.</p>
   <form method="post" id="createMarketForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="title">Title</label>
     <input id="title" name="title" maxlength="200" required placeholder="Will Yale beat Harvard in The Game?">
 
@@ -32,7 +33,10 @@
 <script>
   (function () {
     var el = document.getElementById("tz_offset_minutes");
-    if (el) el.value = String(new Date().getTimezoneOffset());
+    document.getElementById("createMarketForm").addEventListener("submit", () => {
+      const date = new Date(document.getElementById("closes_at").value);
+      if (el && !Number.isNaN(date.getTime())) el.value = String(date.getTimezoneOffset());
+    });
   })();
 </script>
 {% endblock %}

@@ -1,85 +1,39 @@
 {% extends "base.html" %}
-{% block title %}Yalshi{% endblock %}
+{% block title %}Yalshi · The campus market{% endblock %}
 {% block content %}
-
-{% if not current_user.is_authenticated %}
-<section class="hero-stage">
-  <div class="hero-inner">
-    <h1 class="hero-brand">Yal<em>shi</em></h1>
-    <p class="hero-lead">Play-money prediction markets for Yale — trade campus events with friends.</p>
-    <div class="hero-actions">
-      <a class="btn btn-on-dark" href="{{ url_for('auth.login') }}">Sign in</a>
-    </div>
-    <p class="cas-hint">
-      On Render, Yale CAS returns <strong>Not Authorized</strong> for public URLs
-      (even <code>secure-tst</code>) until ITS allowlists
-      <code>…/login_callback</code>. Yale Books only works with
-      <code>localhost</code> today. Use <strong>Friend access</strong> on the
-      sign-in page (set <code>FRIEND_ACCESS_CODE</code> on Render).
-    </p>
+<section class="campus-hero">
+  <div class="hero-copy">
+    <p class="eyebrow"><span class="live-dot"></span> YALE’S PREDICTION MARKET</p>
+    <h1>Campus has opinions.<br><em>Make yours count.</em></h1>
+    <p>From The Game to the next campus headline. Trade your predictions, follow your friends, and see where you stand.</p>
+    <div class="hero-actions"><a class="btn btn-on-dark" href="{{ url_for('markets.create') if current_user.is_authenticated else url_for('auth.login') }}">{{ 'Propose a market' if current_user.is_authenticated else 'Make your first call' }} ↗</a><span class="hero-note">All the conviction. Zero real money.</span></div>
+  </div>
+  <div class="hero-art" aria-hidden="true">
+    <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><span class="art-coordinate">NEW HAVEN, CT / 41.3083° N</span>
+    <svg viewBox="0 0 360 240" fill="none"><path d="M15 222H345M53 222V137H100V222M60 137V118H92V137M63 118V101M88 118V101M126 222V84H142V64H151V40L161 17L171 40V64H180V84H196V222M142 64H180M151 64V40H171M132 95H190M139 110V129M157 110V129M176 110V129M139 144V163M157 144V163M176 144V163M151 222V189Q161 170 171 189V222M211 222V151H311V222M222 151V130H301V151M226 130L261 105L297 130M230 168V187M255 168V187M281 168V187" stroke="currentColor" stroke-width="2"/><path d="M0 194L47 179L80 185L121 150L156 159L198 123L232 138L277 85L315 91L357 42" stroke="#a8c7ee" stroke-width="3"/><circle cx="357" cy="42" r="5" fill="#fff"/></svg>
+    <span class="art-caption">A different kind of campus exchange.</span>
   </div>
 </section>
-{% else %}
-<header class="feed-head">
-  <div>
-    <h1>Popular now</h1>
-    <p>Markets ranked by activity. Friends show up when they’re in.</p>
-  </div>
-  <div class="actions">
-    <a class="btn" href="{{ url_for('markets.create') }}">Create</a>
-    <a class="btn ghost" href="{{ url_for('social.people') }}">People</a>
-  </div>
-</header>
-{% endif %}
-
-{% if current_user.is_authenticated or feed %}
-<section class="feed-list">
-  {% if not current_user.is_authenticated and feed %}
-    <header class="feed-head">
-      <div>
-        <h1>Open markets</h1>
-        <p>Browse without an account — sign in to trade.</p>
-      </div>
-    </header>
-  {% endif %}
-
-  {% for card in feed %}
-    {% set m = card.market %}
-    <a class="market-row" href="{{ url_for('markets.detail', market_id=m.id) }}">
-      <div class="market-row-top">
-        <span class="badge {{ m.status }}">{{ m.status }}</span>
-        <span class="meta">{{ card.trade_count }} trades · {{ card.trader_count }} traders · {{ m.creator.public_name }}</span>
-      </div>
-      <h2>{{ m.title }}</h2>
-      <p class="blurb">{{ m.description[:140] }}{% if m.description|length > 140 %}…{% endif %}</p>
-      {% if card.friends %}
-        <div class="friend-line">
-          <span class="label">Friends:</span>
-          {% for f in card.friends[:5] %}
-            <span>{{ f.public_name }}{% if not loop.last %},{% endif %}</span>
-          {% endfor %}
-          {% if card.friends|length > 5 %}<span class="meta">+{{ card.friends|length - 5 }}</span>{% endif %}
-        </div>
-      {% endif %}
-      {% if m.status == 'open' %}
-      <div class="prices">
-        <div class="price yes"><small>Yes</small><span>{{ '%.0f'|format(m.price_yes * 100) }}¢</span></div>
-        <div class="price no"><small>No</small><span>{{ '%.0f'|format(m.price_no * 100) }}¢</span></div>
-      </div>
-      {% else %}
-        <p class="meta">Closes {{ m.closes_at.strftime('%b %d, %Y · %H:%M') }} UTC</p>
-      {% endif %}
-    </a>
-  {% else %}
-    <div class="empty-state">
-      {% if current_user.is_authenticated %}
-        No markets yet. <a href="{{ url_for('markets.create') }}">Create the first one</a>.
-      {% else %}
-        No open markets right now. Sign in to create one.
-      {% endif %}
-    </div>
-  {% endfor %}
+<div class="market-intro"><span><strong>01</strong> Find your market</span><span><strong>02</strong> Take a side</span><span><strong>03</strong> Let campus decide</span><span class="points-note">YES + NO = 1 play point</span></div>
+<header class="feed-head" id="markets"><div><p class="eyebrow">THE CAMPUS PULSE</p><h2>On the market</h2><p>Big questions. Campus-sized stakes.</p></div><a class="text-link" href="{{ url_for('markets.create') }}">Propose a market ↗</a></header>
+<div class="feed-toolbar">
+  <div class="filter-group" role="group" aria-label="Filter markets"><button class="filter active" data-filter="all" aria-pressed="true">All markets</button><button class="filter" data-filter="open" aria-pressed="false">Open for trading</button><button class="filter" data-filter="closed" aria-pressed="false">Awaiting outcome</button></div>
+  <label class="search-field"><span class="sr-only">Search markets</span><span aria-hidden="true">⌕</span><input id="marketSearch" type="search" placeholder="Search markets…"></label>
+</div>
+<div class="results-meta"><span id="marketCount" aria-live="polite">{{ feed|length }} markets</span><span>Sorted by activity</span></div>
+<section class="market-grid" aria-label="Campus markets">
+{% for card in feed %}{% set m = card.market %}
+  <a class="market-card" data-status="{{ m.status }}" data-search="{{ (m.title ~ ' ' ~ m.description)|lower }}" href="{{ url_for('markets.detail', market_id=m.id) }}">
+    <div class="card-top"><span class="market-icon" aria-hidden="true">{{ '%02d'|format(loop.index) }}</span><span class="badge {{ m.status }}">{{ 'Trading open' if m.status == 'open' else m.status }}</span><span class="card-arrow" aria-hidden="true">↗</span></div>
+    <h3>{{ m.title }}</h3><p class="blurb">{{ m.description[:130] }}{% if m.description|length > 130 %}…{% endif %}</p>
+    <div class="market-odds"><strong>{{ '%.0f'|format(m.price_yes * 100) }}<small>%</small></strong><span>chance of YES</span></div>
+    <div class="probability-track" aria-hidden="true"><span style="width:{{ m.price_yes * 100 }}%"></span></div>
+    {% if m.status == 'open' %}<div class="prices"><div class="price yes"><small>Yes</small><span>{{ '%.0f'|format(m.price_yes * 100) }}¢</span></div><div class="price no"><small>No</small><span>{{ '%.0f'|format(m.price_no * 100) }}¢</span></div></div>{% else %}<p class="awaiting-label">Trading closed · Awaiting resolution</p>{% endif %}
+    <div class="card-footer"><span>{{ card.trader_count }} trader{{ 's' if card.trader_count != 1 }} · {{ card.trade_count }} trade{{ 's' if card.trade_count != 1 }}</span><span>{{ m.closes_at.strftime('%b %d') }}</span></div>
+    {% if card.friends %}<div class="friend-line">{{ card.friends|length }} friend{{ 's' if card.friends|length != 1 }} joined this market</div>{% endif %}
+  </a>
+{% else %}<div class="empty-state"><h3>The next big question starts with you.</h3><p>No active markets yet. Propose something campus will care about.</p><a class="btn" href="{{ url_for('markets.create') }}">Propose a market</a></div>{% endfor %}
 </section>
-{% endif %}
-
+<div class="empty-state" id="noMatches" hidden><h3>No markets found.</h3><p>Try another search or choose a different filter.</p></div>
+<section class="community-strip"><div><p class="eyebrow">BETTER WITH FRIENDS</p><h2>Your campus. Your crowd. Your call.</h2><p>Find familiar faces and a little friendly competition.</p></div><a class="btn ghost" href="{{ url_for('social.people') }}">Find your people ↗</a></section>
 {% endblock %}

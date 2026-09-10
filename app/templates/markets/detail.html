@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ market.title }} · Yale Markets{% endblock %}
+{% block title %}{{ market.title }} · Yalshi{% endblock %}
 {% block content %}
 <div class="panel detail-hero">
   <div class="market-row-top">
@@ -46,21 +46,22 @@
       <p class="meta">You hold YES {{ '%.2f'|format(my_pos.yes_shares) }} · NO {{ '%.2f'|format(my_pos.no_shares) }}</p>
     {% endif %}
     <form method="post" action="{{ url_for('markets.trade', market_id=market.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label>Side</label>
       <div class="side-toggle">
         <label class="choice"><input type="radio" name="side" value="YES" checked> YES</label>
         <label class="choice"><input type="radio" name="side" value="NO"> NO</label>
       </div>
-      <label>Action</label>
-      <select name="action"><option>BUY</option><option>SELL</option></select>
-      <label>Shares</label>
-      <input name="shares" type="number" step="0.01" min="0.01" value="5" required>
+      <label for="action">Action</label>
+      <select id="action" name="action"><option>BUY</option><option>SELL</option></select>
+      <label for="shares">Shares</label>
+      <input id="shares" name="shares" type="number" step="0.01" min="0.01" value="5" required>
       <button type="submit">Place trade</button>
     </form>
   </div>
   <div class="panel">
     <h3>Recent trades</h3>
-    <table class="table">
+    <div class="table-scroll"><table class="table">
       <thead><tr><th>Who</th><th>Act</th><th>Avg</th></tr></thead>
       <tbody>
         {% for t in trades %}
@@ -73,19 +74,24 @@
         <tr><td colspan="3" class="meta">No trades yet.</td></tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   </div>
 </div>
+{% endif %}
+
+{% if market.status == 'open' and not current_user.is_authenticated %}
+<div class="panel"><h2>Have a prediction?</h2><p class="meta">Sign in to take a side with play points.</p><a class="btn" href="{{ url_for('auth.login', next=request.path) }}">Sign in to trade ↗</a></div>
 {% endif %}
 
 {% if current_user.is_authenticated and market.status in ['closed', 'disputed'] and (current_user.id == market.creator_id or current_user.is_admin) %}
 <div class="panel">
   <h3>Propose resolution</h3>
   <form method="post" action="{{ url_for('markets.propose', market_id=market.id) }}">
-    <label>Outcome</label>
-    <select name="outcome"><option>YES</option><option>NO</option></select>
-    <label>Evidence</label>
-    <textarea name="evidence" rows="3" required></textarea>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="outcome">Outcome</label>
+      <select id="outcome" name="outcome"><option>YES</option><option>NO</option></select>
+    <label for="evidence">Evidence</label>
+      <textarea id="evidence" name="evidence" rows="3" required></textarea>
     <button type="submit">Propose</button>
   </form>
 </div>
@@ -95,8 +101,9 @@
 <div class="panel">
   <h3>Dispute proposal</h3>
   <form method="post" action="{{ url_for('markets.dispute', market_id=market.id) }}">
-    <label>Reason</label>
-    <textarea name="reason" rows="2" required></textarea>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="reason">Reason</label>
+      <textarea id="reason" name="reason" rows="2" required></textarea>
     <button class="danger" type="submit">File dispute</button>
   </form>
 </div>
@@ -106,8 +113,9 @@
 <div class="panel">
   <h3>Admin finalize</h3>
   <form method="post" action="{{ url_for('markets.finalize', market_id=market.id) }}">
-    <label>Final outcome</label>
-    <select name="outcome"><option>YES</option><option>NO</option><option>VOID</option></select>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="outcome">Final outcome</label>
+      <select id="outcome" name="outcome"><option>YES</option><option>NO</option><option>VOID</option></select>
     <button type="submit">Finalize & settle</button>
   </form>
 </div>
@@ -128,6 +136,7 @@
   </div>
   {% if current_user.is_authenticated %}
   <form method="post" action="{{ url_for('markets.chat', market_id=market.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="body">Message</label>
     <input id="body" name="body" maxlength="1000" required placeholder="Keep it civil — NetIDs stay private.">
     <button type="submit">Send</button>

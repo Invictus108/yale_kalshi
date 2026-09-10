@@ -143,6 +143,9 @@ def _seed_admin_balance_history(admin_id: int) -> None:
     ).first()
     if already:
         return
+    # Never replace real activity when demo mode is enabled on an existing DB.
+    if LedgerEntry.query.filter_by(account_id=account.id).filter(LedgerEntry.kind != "seed").first():
+        return
 
     # Demo mode: rebuild a clean history once (keeps ending balance at SEED_BALANCE).
     LedgerEntry.query.filter_by(account_id=account.id).delete()

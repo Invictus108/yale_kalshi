@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ profile_user.public_name }} · Yale Markets{% endblock %}
+{% block title %}{{ profile_user.public_name }} · Yalshi{% endblock %}
 {% block content %}
 <div class="panel" style="max-width:640px;margin:0 auto;">
   <h2>{{ profile_user.public_name }}</h2>
@@ -26,6 +26,7 @@
   {% elif relation == 'friends' %}
     <a class="btn" href="{{ url_for('social.chat_thread', user_id=profile_user.id) }}">Message</a>
     <form method="post" action="{{ url_for('social.unfriend', user_id=profile_user.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="ghost" type="submit">Unfriend</button>
     </form>
   {% elif relation == 'outgoing' %}
@@ -34,6 +35,7 @@
     <p class="meta">They sent you a request — manage it on <a href="{{ url_for('social.people') }}">People</a>.</p>
   {% else %}
     <form method="post" action="{{ url_for('social.friend_request', user_id=profile_user.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit">Add friend</button>
     </form>
   {% endif %}

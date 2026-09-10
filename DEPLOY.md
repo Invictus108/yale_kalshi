@@ -1,103 +1,50 @@
-# Deploy to Render (Yale Markets)
+# Deploy Yalshi
 
-## 1. Push to GitHub
+## Application commands
 
-```bash
-cd "C:\Users\jaden\OneDrive\Code\Yale Clubs\yale_AI\yale_kalshi"
-git add -A
-git status
-git commit -m "Add Render deploy (gunicorn + Procfile)"
-git remote add origin https://github.com/YOUR_USER/YOUR_REPO.git
-git push -u origin main
-```
+Build: `pip install -r requirements.txt`
 
-(Skip `git remote add` if `origin` already exists.)
+Start on a Linux host: `gunicorn -b 0.0.0.0:$PORT run:app`
 
-## 2. Create Render Web Service
+Use the repository's Procfile or configure the start command directly. SQLite is stored at `yale_markets.db` in the repository directory; keep the existing filename to preserve compatibility. Arrange persistent storage and backups before retaining user data across deployments.
 
-1. [https://dashboard.render.com](https://dashboard.render.com) → **New** → **Web Service**
-2. Connect the GitHub repo
-3. Settings:
+## Configuration
 
-| Field | Value |
-|--------|--------|
-| **Runtime** | Python 3 |
-| **Build Command** | `pip install -r requirements.txt` |
-| **Start Command** | `gunicorn -b 0.0.0.0:$PORT run:app` |
+| Variable | Setting |
+| --- | --- |
+| FLASK_SECRET_KEY | Strong, persistent random secret, identical across workers |
+| APP_BASE_URL | Public HTTPS origin, without a trailing slash |
+| ORIGIN | Same origin as APP_BASE_URL |
+| BOOTSTRAP_ADMIN_NETID | Administrator's Yale NetID |
+| DEV_AUTH_BYPASS | false on public hosts |
+| FRIEND_ACCESS_CODE | Empty for CAS-only access; nonempty only for a private preview |
+| SEED_DEMO_DATA | false |
+| SEED_BALANCE | 10000 |
+| LMSR_B | 100 (must be positive) |
+| DISPUTE_HOURS | 24 |
+| CAS_LOGIN_URL | CAS login endpoint approved for this deployment |
+| CAS_VALIDATE_URL | Corresponding CAS serviceValidate endpoint |
 
-(Or leave Start Command empty if Render picks up the `Procfile`.)
+The code defaults to Yale test CAS endpoints. Register the exact callback `{APP_BASE_URL}/login_callback` with the identity provider as required. Public deployment does not automatically enable NetID login. The old `CAS_USE_TEST` variable is not used; configure the endpoint URLs directly.
 
-## 3. Environment variables (Render → Environment)
+A missing `FLASK_SECRET_KEY` generates a temporary process-local secret. This is suitable only for disposable development: restarts invalidate sessions, and separate workers may disagree. Always configure a persistent key for deployment.
 
-Set **all** of these (replace placeholders):
+## Preview access
 
-| Key | Value |
-|-----|--------|
-| `FLASK_SECRET_KEY` | long random string (see generate command below) |
-| `DEV_AUTH_BYPASS` | `false` |
-| `CAS_USE_TEST` | `true` |
-| `APP_BASE_URL` | `https://YOUR-SERVICE-NAME.onrender.com` (no trailing slash) |
-| `ORIGIN` | same as `APP_BASE_URL` |
-| `BOOTSTRAP_ADMIN_NETID` | your Yale NetID (lowercase, no `@yale.edu`) |
-| `FRIEND_ACCESS_CODE` | shared secret so friends can NetID-login (required on Render) |
-| `SEED_BALANCE` | `10000` |
-| `LMSR_B` | `100` |
-| `DISPUTE_HOURS` | `24` |
-| `SEED_DEMO_DATA` | `true` |
+A shared access code enables unverified NetID access for non-admin accounts. Anyone with that code can claim another non-admin NetID. Use only with disposable preview data and trusted testers. Administrator accounts require CAS unless development bypass is explicitly enabled.
 
-Optional (email — leave blank to skip sending):
+## Email
 
-| Key | Value |
-|-----|--------|
-| `SMTP_HOST` | _(empty)_ |
-| `SMTP_PORT` | `587` |
-| `SMTP_USER` | _(empty)_ |
-| `SMTP_PASSWORD` | _(empty)_ |
-| `SMTP_FROM` | `yale-markets@yale.edu` |
-| `SMTP_USE_TLS` | `true` |
+Leave `SMTP_HOST` empty to disable delivery. Otherwise configure `SMTP_HOST`, `SMTP_PORT` (default 587), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` (default yalshi@yale.edu), and `SMTP_USE_TLS` (default true). Use a sender your mail provider authorizes.
 
-### Generate a secret key
+Email currently runs synchronously during resolution. For larger deployments, move delivery to a durable queue after database commit.
 
-```bash
-python -c "import secrets; print(secrets.token_hex(32))"
-```
+## Verify after deployment
 
-## 4. After first deploy
+1. Confirm the home page and assets load with Yalshi branding.
+2. Sign in through CAS and confirm the return destination.
+3. Confirm public users cannot access admin actions.
+4. Exercise market creation, approval, a play-point trade, and portfolio updates with test accounts.
+5. Verify sign-out remains effective on the next request.
 
-1. Open `https://YOUR-SERVICE-NAME.onrender.com`
-2. Click **Sign in with CAS** — browser should go to **`secure-tst.its.yale.edu`** (not `secure.its`)
-3. Confirm login lands on `/login_callback` then home
-
-**CAS rule:** `APP_BASE_URL` must exactly match the URL you open in the browser.
-
-## CAS: “Not Authorized to this service”
-
-Your env vars can be correct and this still happens. Live check:
-
-Yalshi redirects to  
-`https://secure-tst.its.yale.edu/cas/login?service=https://yalshi.onrender.com/login_callback`  
-…and Yale still returns **403 Not Authorized**.
-
-Same as Yale Books limits today:
-
-| `service=` | secure-tst result |
-|------------|-------------------|
-| `http://localhost:5000/login_callback` | OK |
-| `https://yalshi.onrender.com/login_callback` | Not Authorized |
-| `https://yale-books.onrender.com/login_callback` | Not Authorized |
-
-**Workaround for friend testing on Render** — add:
-
-```text
-FRIEND_ACCESS_CODE=pick-a-secret
-```
-
-Then `/login` shows NetID + access code. CAS stays available for after ITS allowlists your callback.
-
-Debug: `https://yalshi.onrender.com/cas-debug`
-
-## Notes
-
-- Free Render spins down when idle (cold start ~30s).
-- SQLite lives on the instance disk and **can reset on redeploy** — fine for friend testing.
-- Do **not** commit `.env` or `*.db`.
+Run `python -B -m unittest test_regressions -v` before deployment. Keep `.env` and databases out of Git. No deployment or remote account changes were made as part of this audit.

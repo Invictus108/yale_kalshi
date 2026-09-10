@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}People · Yale Markets{% endblock %}
+{% block title %}People · Yalshi{% endblock %}
 {% block content %}
 <header class="feed-head">
   <div>
@@ -26,9 +26,11 @@
     <div class="friend-row">
       <a href="{{ url_for('social.profile', user_id=fr.requester.id) }}"><strong>{{ fr.requester.public_name }}</strong></a>
       <form method="post" action="{{ url_for('social.friend_accept', friendship_id=fr.id) }}" style="display:inline;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" style="margin-top:0">Accept</button>
       </form>
       <form method="post" action="{{ url_for('social.friend_decline', friendship_id=fr.id) }}" style="display:inline;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="ghost" type="submit" style="margin-top:0">Decline</button>
       </form>
     </div>
@@ -39,7 +41,7 @@
 {% if q %}
 <div class="panel">
   <h3>Results</h3>
-  <table class="table">
+  <div class="table-scroll"><table class="table">
     <thead><tr><th>Name</th><th>Earnings</th><th>Portfolio</th><th></th></tr></thead>
     <tbody>
       {% for u in results %}
@@ -56,6 +58,7 @@
             {% elif rel == 'incoming' %}<span class="meta">respond above</span>
             {% else %}
               <form method="post" action="{{ url_for('social.friend_request', user_id=u.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" style="margin-top:0">Add friend</button>
               </form>
             {% endif %}
@@ -65,14 +68,14 @@
         <tr><td colspan="4" class="meta">No matches.</td></tr>
       {% endfor %}
     </tbody>
-  </table>
+  </table></div>
 </div>
 {% endif %}
 
 <div class="panel">
   <h3>Your friends</h3>
   {% if my_friends %}
-  <table class="table">
+  <div class="table-scroll"><table class="table">
     <thead><tr><th>Name</th><th>Earnings</th><th></th></tr></thead>
     <tbody>
       {% for u in my_friends %}
@@ -84,7 +87,7 @@
         </tr>
       {% endfor %}
     </tbody>
-  </table>
+  </table></div>
   {% else %}
   <p class="meta">No friends yet — search above.</p>
   {% endif %}

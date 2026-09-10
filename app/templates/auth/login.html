@@ -1,39 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Sign in · Yalshi{% endblock %}
 {% block content %}
-<div class="panel" style="max-width:520px;margin:0 auto;">
-  <h2>Sign in</h2>
-
+<section class="panel login-panel">
+  <span class="brand-mark" aria-hidden="true">Y</span><p class="eyebrow">WELCOME TO YALSHI</p><h1>Your next call starts here.</h1><p class="meta">Join the conversation. Trade campus predictions with play points.</p>
+  <a class="btn full-width" href="{{ url_for('auth.login_cas', next=request.args.get('next', '/')) }}">Continue with Yale CAS ↗</a>
   {% if friend_mode %}
-  <p class="meta">
-    Enter your Yale NetID. (Public hosts can’t use Yale CAS until ITS allowlists the app —
-    same limit as Yale Books on Render.)
-  </p>
-  <form method="post">
-    <label for="netid">Yale NetID</label>
-    <input id="netid" name="netid" placeholder="jd1234" required autofocus autocomplete="username">
-    {% if require_code %}
-    <label for="access_code">Access code</label>
-    <input id="access_code" name="access_code" type="password" required autocomplete="one-time-code">
-    {% endif %}
-    <button type="submit" style="width:100%">Continue</button>
-  </form>
-
-  <details style="margin-top:1.25rem;">
-    <summary class="meta" style="cursor:pointer;">Advanced: try Yale CAS</summary>
-    <p class="meta" style="margin-top:0.6rem;">
-      Works on <code>localhost</code> only right now. On Render you’ll get
-      “Not Authorized to this service.”
-    </p>
-    <a class="btn ghost" href="{{ url_for('auth.login_cas') }}">Open Yale CAS</a>
-    <p class="meta" style="margin-top:0.75rem;">
-      Service: <code>{{ cas_status.service_url }}</code><br>
-      CAS: <code>{{ cas_status.cas_login_url }}</code>
-    </p>
-  </details>
-  {% else %}
-  <p class="meta">Local CAS (Yale Books style) — service must be localhost.</p>
-  <a class="btn" href="{{ url_for('auth.login_cas') }}" style="width:100%;">Sign in with Yale CAS</a>
-  {% endif %}
-</div>
+  <div class="login-divider">{{ 'Development access' if config.DEV_AUTH_BYPASS else 'Private preview access' }}</div>
+  <p class="meta">{{ 'Development mode allows sign-in with a test NetID.' if config.DEV_AUTH_BYPASS else 'Use your NetID and the preview code. Preview access does not verify your Yale identity.' }}</p>
+  <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="netid">NetID</label><input id="netid" name="netid" placeholder="jd1234" required maxlength="64" autocomplete="username">
+    {% if require_code %}<label for="access_code">Preview access code</label><input id="access_code" name="access_code" type="password" required autocomplete="one-time-code">{% endif %}
+    <button class="ghost full-width" type="submit">Continue to preview</button>
+  </form>{% endif %}
+  <p class="login-footnote">Campus predictions. Play points only.</p>
+</section>
 {% endblock %}

@@ -51,7 +51,7 @@ def validate_ticket(ticket: str) -> str:
     resp.raise_for_status()
     data = parse_cas_response(resp.text)
 
-    sr = data.get("cas:serviceResponse", {})
+    sr = data.get("cas:serviceResponse") or data.get("serviceResponse") or {}
 
     # Yale_Books checks key without cas: prefix after xmltodict; handle both.
     failure = sr.get("cas:authenticationFailure") or sr.get("authenticationFailure")

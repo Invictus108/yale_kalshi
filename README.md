@@ -1,34 +1,30 @@
-# Yale Markets — Play-money campus prediction market
+# Yalshi
 
-Flask + SQLite. Yale CAS (same pattern as Yale_Books), LMSR trading, friends/DMs, popular feed.
+A play-money prediction market for the Yale community. Built with Flask, SQLite, Yale CAS, LMSR trading, portfolios, leaderboards, friends, and direct messages.
 
-## Quick start (local)
+## Run locally
 
-```bash
-cd yale_kalshi
+```powershell
 python -m venv .venv
-.\.venv\Scripts\activate
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 python run.py
 ```
 
-Open **http://localhost:5000** (must match `APP_BASE_URL`) → **Sign in with CAS**.
+Configure a local `.env` using `.env.example`. Set a strong, persistent `FLASK_SECRET_KEY` and your `BOOTSTRAP_ADMIN_NETID`. Open [localhost:5000](http://localhost:5000); `APP_BASE_URL` must match the address used for CAS.
 
-## Deploy (Render)
+Yale CAS is the normal sign-in method. For a local development account, explicitly set `DEV_AUTH_BYPASS=true`. Keep it false on public hosts. Shared-code preview login is opt-in via `FRIEND_ACCESS_CODE`; it does not verify Yale identity, and administrators must use CAS outside development mode.
 
-See **[DEPLOY.md](DEPLOY.md)** for build/start commands and the full env-var list.
+Demo data is off by default. Existing `.env` values still override defaults.
 
-Short version:
+## Verify
 
-- Build: `pip install -r requirements.txt`
-- Start: `gunicorn -b 0.0.0.0:$PORT run:app`
-- Set `APP_BASE_URL` to your `https://….onrender.com` URL
+```powershell
+.\.venv\Scripts\python.exe -B -m unittest test_regressions -v
+```
 
-## CAS
+Tests use isolated in-memory databases and a temporary SQLite database for concurrent requests. They do not modify the app's existing database or send real email.
 
-Defaults use Yale test CAS (`secure-tst`), same as Yale_Books.  
-Callback: `{APP_BASE_URL}/login_callback`
+See [deployment instructions](DEPLOY.md) for configuration.
 
-## Disclaimer
-
-Play money only. Not affiliated with Kalshi.
+Play points only. Not affiliated with Kalshi.

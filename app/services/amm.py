@@ -36,8 +36,10 @@ def trade_cost(
     cost > 0 means trader pays the market.
     cost < 0 means trader receives from the market (sell).
     """
-    if shares <= 0:
-        raise ValueError("shares must be positive")
+    if not all(math.isfinite(v) for v in (shares, q_yes, q_no, b)):
+        raise ValueError("trade values must be finite")
+    if b <= 0 or shares <= 0 or shares > 1_000_000:
+        raise ValueError("shares must be between 0 and 1,000,000; liquidity must be positive")
     side = side.upper()
     action = action.upper()
     if side not in {"YES", "NO"} or action not in {"BUY", "SELL"}:

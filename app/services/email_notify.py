@@ -14,13 +14,12 @@ def send_email(to_addr: str, subject: str, body: str) -> tuple[str, str]:
     if not host:
         return "skipped", "SMTP_HOST not configured"
 
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = current_app.config["SMTP_FROM"]
-    msg["To"] = to_addr
-    msg.set_content(body)
-
     try:
+        msg = EmailMessage()
+        msg["Subject"] = subject
+        msg["From"] = current_app.config["SMTP_FROM"]
+        msg["To"] = to_addr
+        msg.set_content(body)
         port = current_app.config["SMTP_PORT"]
         with smtplib.SMTP(host, port, timeout=20) as smtp:
             if current_app.config.get("SMTP_USE_TLS"):

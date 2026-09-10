@@ -1,4 +1,5 @@
 from __future__ import annotations
+import math
 
 from app.extensions import db
 from app.models import LedgerAccount, LedgerEntry, utcnow
@@ -24,8 +25,12 @@ def apply_entry(
     note: str | None = None,
     allow_negative: bool = False,
 ) -> LedgerAccount:
+    if not math.isfinite(amount):
+        raise ValueError("ledger amount must be finite")
     account = get_or_create_account(user_id)
     new_balance = account.balance + amount
+    if not math.isfinite(new_balance):
+        raise ValueError("ledger balance must be finite")
     if not allow_negative and new_balance < -1e-9:
         raise ValueError("insufficient balance")
     account.balance = new_balance

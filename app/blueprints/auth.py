@@ -1,4 +1,5 @@
 from functools import wraps
+import re
 from urllib.parse import urlencode
 
 from flask import (
@@ -15,6 +16,8 @@ from flask_login import current_user, login_required, login_user, logout_user
 
 from app.services import cas as cas_svc
 from app.services.users import get_or_create_user
+from app.security import safe_next
+from app.models import User
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -64,8 +67,8 @@ def login():
                 require_code=require_code,
                 cas_status=cas_svc.cas_public_status(),
             )
-        if not netid:
-            flash("Enter your Yale NetID.", "warning")
+        if not re.fullmatch(r"[a-z][a-z0-9_]{0,63}", netid):
+            flash("Enter a valid Yale NetID (letters, numbers, or underscores).", "warning")
             return render_template(
                 "auth/login.html",
                 friend_mode=friend_mode,
@@ -73,10 +76,17 @@ def login():
                 cas_status=cas_svc.cas_public_status(),
             )
 
+        existing = User.query.filter_by(netid=netid).first()
+        if not current_app.config.get("DEV_AUTH_BYPASS") and (
+            netid == current_app.config["BOOTSTRAP_ADMIN_NETID"]
+            or (existing and existing.is_admin)
+        ):
+            flash("Administrators must sign in with Yale CAS.", "warning")
+            return redirect(url_for("auth.login"))
         user = get_or_create_user(netid)
         login_user(user, remember=True)
         flash(f"Signed in as {netid}.", "success")
-        return redirect(request.args.get("next") or url_for("main.index"))
+        return redirect(safe_next(request.args.get("next")))
 
     return render_template(
         "auth/login.html",
@@ -92,7 +102,7 @@ def login_cas():
     if current_user.is_authenticated:
         return redirect(url_for("main.index"))
 
-    nxt = request.args.get("next") or url_for("main.index")
+    nxt = safe_next(request.args.get("next"))
     session["post_login_next"] = nxt
 
     # Yale_Books:
@@ -123,7 +133,7 @@ def login_callback():
     login_user(user, remember=True)
     flash("Signed in with Yale CAS.", "success")
     nxt = session.pop("post_login_next", None) or url_for("main.index")
-    return redirect(nxt)
+    return redirect(safe_next(nxt))
 
 
 @auth_bp.route("/dev-login", methods=["GET", "POST"])
@@ -131,10 +141,12 @@ def dev_login():
     return redirect(url_for("auth.login"))
 
 
-@auth_bp.route("/logout")
+@auth_bp.route("/logout", methods=["POST"])
 def logout():
     logout_user()
     session.clear()
+    # Flask-Login needs this flag after the session is cleared to expire its cookie.
+    session["_remember"] = "clear"
     flash("Signed out.", "info")
     return redirect(url_for("main.index"))
 

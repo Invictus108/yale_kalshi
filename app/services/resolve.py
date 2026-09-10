@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from flask import current_app
+from sqlalchemy import update
 
 from app.extensions import db
 from app.models import Market, utcnow
@@ -12,7 +13,11 @@ from app.services.trading import settle_market
 
 def close_if_expired(market: Market) -> None:
     if market.status == "open" and market.closes_at <= utcnow():
-        market.status = "closed"
+        # A stale page request must never overwrite a concurrent settlement.
+        db.session.execute(update(Market).where(
+            Market.id == market.id, Market.status == "open", Market.closes_at <= utcnow()
+        ).values(status="closed").execution_options(synchronize_session=False))
+        db.session.refresh(market)
 
 
 def propose_resolution(
@@ -42,7 +47,7 @@ def propose_resolution(
 
     notify_market_holders(
         market,
-        f"[Yale Markets] Resolution proposed: {market.title}",
+        f"[Yalshi] Resolution proposed: {market.title}",
         (
             f"A resolution of {outcome} was proposed for:\n\n"
             f"{market.title}\n\nEvidence:\n{evidence}\n\n"
@@ -62,7 +67,7 @@ def dispute_resolution(market: Market, *, reason: str) -> None:
     market.dispute_reason = reason.strip()
     notify_market_holders(
         market,
-        f"[Yale Markets] Resolution disputed: {market.title}",
+        f"[Yalshi] Resolution disputed: {market.title}",
         f"A trader disputed the proposed {market.proposed_outcome} outcome.\n\nReason:\n{reason}\n",
     )
 
@@ -78,6 +83,11 @@ def finalize_resolution(
         raise ValueError("outcome must be YES, NO, or VOID")
     if market.status in {"resolved", "void"}:
         raise ValueError("already resolved")
+    close_if_expired(market)
+    if market.status not in {"closed", "proposed", "disputed"}:
+        raise ValueError("market must be closed before settlement")
+    if market.dispute_deadline and utcnow() < market.dispute_deadline:
+        raise ValueError("wait until the dispute window ends before settlement")
 
     # Capture holders before settle zeroes positions.
     from app.models import Position, User
@@ -101,7 +111,7 @@ def finalize_resolution(
 
         notify_user(
             user,
-            f"[Yale Markets] Resolved: {market.title} → {outcome}",
+            f"[Yalshi] Resolved: {market.title} → {outcome}",
             (
                 f"Market resolved as {outcome}.\n\n"
                 f"{market.title}\n\n"

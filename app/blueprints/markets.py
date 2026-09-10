@@ -28,8 +28,10 @@ def _parse_closes_at(raw: str, tz_offset_minutes: str) -> datetime:
         return closes_local.astimezone(timezone.utc).replace(tzinfo=None)
     try:
         offset = int(tz_offset_minutes or "0")
-    except ValueError:
-        offset = 0
+    except ValueError as exc:
+        raise ValueError("invalid timezone offset") from exc
+    if not -840 <= offset <= 840:
+        raise ValueError("invalid timezone offset")
     # UTC = local + offset_minutes
     return closes_local + timedelta(minutes=offset)
 
@@ -47,7 +49,7 @@ def create():
             closes_at = _parse_closes_at(
                 closes_at_raw, request.form.get("tz_offset_minutes", "0")
             )
-        except ValueError:
+        except (ValueError, OverflowError):
             flash("Invalid close time.", "danger")
             return render_template("markets/create.html")
 
@@ -96,7 +98,7 @@ def detail(market_id: int):
     )
     messages = (
         ChatMessage.query.filter_by(market_id=market.id)
-        .order_by(ChatMessage.created_at.asc())
+        .order_by(ChatMessage.created_at.desc(), ChatMessage.id.desc())
         .limit(200)
         .all()
     )
@@ -107,7 +109,7 @@ def detail(market_id: int):
         "markets/detail.html",
         market=market,
         trades=trades,
-        messages=messages,
+        messages=list(reversed(messages)),
         my_pos=my_pos,
     )
 

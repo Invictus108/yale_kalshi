@@ -1,10 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Settings · Yale Markets{% endblock %}
+{% block title %}Settings · Yalshi{% endblock %}
 {% block content %}
 <div class="panel" style="max-width:520px;margin:0 auto;">
   <h2>Profile & privacy</h2>
-  <p class="meta">NetID <code>{{ current_user.netid }}</code> stays on the server. Your public name is what others see.</p>
+  <p class="meta">Choose how campus sees you. Your NetID is hidden from profiles and NetID searches while anonymous mode is on.</p>
   <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="display_name">Public display name</label>
     <input id="display_name" name="display_name" value="{{ current_user.display_name }}" maxlength="80" required>
 
@@ -22,13 +23,4 @@
   </form>
 </div>
 
-<div class="panel" style="max-width:520px;margin:1rem auto 0;">
-  <h3>Yale CAS</h3>
-  <p class="meta">Login → CAS → <code>/login_callback</code> (Yale_Books pattern).</p>
-  <p class="meta">Login:<br><code>{{ cas_login_url }}</code></p>
-  <p class="meta">Service:<br><code>{{ service_url }}</code></p>
-  {% if not cas_enabled %}
-    <p class="meta">Dev bypass on — <a href="{{ url_for('auth.dev_login') }}">/dev-login</a></p>
-  {% endif %}
-</div>
 {% endblock %}

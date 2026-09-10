@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}Please try again · Yalshi{% endblock %}
+{% block content %}
+<section class="panel"><h1>Let’s try that again.</h1><p>{{ message }}</p><a class="btn" href="{{ url_for('main.index') }}">Back to markets</a></section>
+{% endblock %}

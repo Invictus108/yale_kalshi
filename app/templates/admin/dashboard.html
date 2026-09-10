@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Admin · Yale Markets{% endblock %}
+{% block title %}Admin · Yalshi{% endblock %}
 {% block content %}
 <header class="feed-head">
   <div>
@@ -19,9 +19,11 @@
       </div>
       <div class="btn-row">
         <form method="post" action="{{ url_for('admin.approve', market_id=m.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit">Approve</button>
         </form>
         <form method="post" action="{{ url_for('admin.reject', market_id=m.id) }}" style="display:flex;gap:0.4rem;align-items:center;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input name="reason" placeholder="Rejection reason" style="margin:0;min-width:12rem;">
           <button class="danger" type="submit">Reject</button>
         </form>
@@ -42,6 +44,7 @@
         {% if m.proposed_outcome %}<div class="meta">Proposed {{ m.proposed_outcome }}</div>{% endif %}
       </div>
       <form method="post" action="{{ url_for('admin.finalize', market_id=m.id) }}" style="display:flex;gap:0.4rem;align-items:center;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <select name="outcome" style="width:auto;margin:0;">
           <option>YES</option><option>NO</option><option>VOID</option>
         </select>
@@ -55,7 +58,7 @@
 
 <div class="panel">
   <h3>Users</h3>
-  <table class="table">
+  <div class="table-scroll"><table class="table">
     <thead><tr><th>Public</th><th>NetID</th><th>Admin</th><th></th></tr></thead>
     <tbody>
       {% for u in users %}
@@ -66,6 +69,7 @@
         <td>
           {% if u.id != current_user.id %}
           <form method="post" action="{{ url_for('admin.toggle_admin', user_id=u.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="ghost" type="submit" style="margin:0">{{ 'Demote' if u.is_admin else 'Make admin' }}</button>
           </form>
           {% endif %}
@@ -73,6 +77,6 @@
       </tr>
       {% endfor %}
     </tbody>
-  </table>
+  </table></div>
 </div>
 {% endblock %}

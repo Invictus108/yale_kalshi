@@ -9,3 +9,13 @@ venv/
 *.egg-info/
 dist/
 build/
+
+# Local audit reports and internal handoff notes
+REPORT*.md
+report*.md
+*_REPORT.md
+*_report.md
+HANDOFF*.md
+handoff*.md
+reports/
+internal-reports/

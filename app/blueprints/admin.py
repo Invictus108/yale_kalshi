@@ -12,6 +12,9 @@ admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 @admin_bp.route("/")
 @admin_required
 def dashboard():
+    for market in Market.query.filter_by(status="open").all():
+        close_if_expired(market)
+    db.session.flush()
     pending = Market.query.filter_by(status="pending").order_by(Market.created_at.asc()).all()
     needs_resolve = Market.query.filter(
         Market.status.in_(["closed", "proposed", "disputed"])
@@ -34,6 +37,8 @@ def approve(market_id: int):
     market = Market.query.get_or_404(market_id)
     if market.status != "pending":
         flash("Market is not pending.", "warning")
+    elif market.closes_at <= utcnow():
+        flash("This market has expired and cannot be approved. Reject it and submit a new market.", "warning")
     else:
         market.status = "open"
         market.approved_at = utcnow()
@@ -47,6 +52,9 @@ def approve(market_id: int):
 @admin_required
 def reject(market_id: int):
     market = Market.query.get_or_404(market_id)
+    if market.status != "pending":
+        flash("Only pending markets can be rejected. Use settlement for approved markets.", "warning")
+        return redirect(url_for("admin.dashboard"))
     reason = (request.form.get("reason") or "").strip()
     market.status = "void"
     market.final_outcome = "VOID"

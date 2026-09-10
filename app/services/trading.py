@@ -1,4 +1,5 @@
 from __future__ import annotations
+import math
 
 from app.extensions import db
 from app.models import Market, Position, Trade, utcnow
@@ -32,8 +33,10 @@ def execute_trade(
     side = side.upper()
     action = action.upper()
     shares = float(shares)
-    if shares <= 0:
-        raise ValueError("shares must be > 0")
+    if not math.isfinite(shares) or not 0 < shares <= 1_000_000:
+        raise ValueError("shares must be finite, greater than 0, and at most 1,000,000")
+    if side not in {"YES", "NO"} or action not in {"BUY", "SELL"}:
+        raise ValueError("invalid side/action")
 
     pos = get_or_create_position(user_id, market.id)
     if action == "SELL":

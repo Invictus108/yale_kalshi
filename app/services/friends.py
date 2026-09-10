@@ -59,6 +59,8 @@ def pending_incoming(user_id: int) -> list[Friendship]:
 def send_request(requester_id: int, addressee_id: int) -> Friendship:
     if requester_id == addressee_id:
         raise ValueError("cannot friend yourself")
+    if db.session.get(User, addressee_id) is None:
+        raise ValueError("user not found")
     existing = get_friendship(requester_id, addressee_id)
     if existing:
         if existing.status == "accepted":
@@ -96,6 +98,8 @@ def decline_request(user_id: int, friendship_id: int) -> Friendship:
         raise ValueError("request not found")
     if fr.addressee_id != user_id:
         raise ValueError("not your request to decline")
+    if fr.status != "pending":
+        raise ValueError("request is not pending")
     fr.status = "declined"
     fr.updated_at = utcnow()
     return fr
@@ -115,7 +119,7 @@ def search_users(query: str, *, limit: int = 30) -> list[User]:
     like = f"%{q}%"
     return (
         User.query.filter(
-            or_(User.display_name.ilike(like), User.netid.ilike(like))
+            or_(User.display_name.ilike(like), and_(User.is_anonymous_display.is_(False), User.netid.ilike(like)))
         )
         .order_by(User.display_name.asc())
         .limit(limit)
@@ -128,17 +132,18 @@ def are_friends(a: int, b: int) -> bool:
 
 
 def conversation(user_a: int, user_b: int, *, limit: int = 200) -> list[DirectMessage]:
-    return (
+    messages = (
         DirectMessage.query.filter(
             or_(
                 and_(DirectMessage.sender_id == user_a, DirectMessage.recipient_id == user_b),
                 and_(DirectMessage.sender_id == user_b, DirectMessage.recipient_id == user_a),
             )
         )
-        .order_by(DirectMessage.created_at.asc())
+        .order_by(DirectMessage.created_at.desc(), DirectMessage.id.desc())
         .limit(limit)
         .all()
     )
+    return list(reversed(messages))
 
 
 def send_dm(sender_id: int, recipient_id: int, body: str) -> DirectMessage:

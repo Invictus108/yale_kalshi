@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Chat · Yale Markets{% endblock %}
+{% block title %}Chat · Yalshi{% endblock %}
 {% block content %}
 <header class="feed-head">
   <div>
@@ -13,7 +13,7 @@
 
 <div class="panel">
   {% if threads %}
-  <table class="table">
+  <div class="table-scroll"><table class="table">
     <thead><tr><th>Friend</th><th>Latest</th></tr></thead>
     <tbody>
       {% for t in threads %}
@@ -30,7 +30,7 @@
       </tr>
       {% endfor %}
     </tbody>
-  </table>
+  </table></div>
   {% else %}
   <div class="empty-state">Add friends to start chatting.</div>
   {% endif %}
