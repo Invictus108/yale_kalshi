@@ -116,7 +116,14 @@ python run.py
 9. **SQLite datetime:** switched `utcnow()` to naive `datetime.utcnow()` to avoid aware/naive compare errors.
 10. Removed unused `flask_login` import alias in `app/__init__.py`.
 
-### 2026-09-09 — Portfolio chart + demo social seed
+### 2026-09-09 — Render deploy kit
+
+1. Added `gunicorn` to `requirements.txt` and `Procfile`.
+2. Added `DEPLOY.md` with Render build/start commands + env var table.
+
+
+Project files moved from `yale_AI/yale_kalshi/` up to `yale_AI/` so the GitHub repo root is the app (not a nested folder). Agent workspace root updated accordingly.
+
 
 1. `services/history.py` builds cash balance series from ledger entries.
 2. Portfolio page charts it with Chart.js.

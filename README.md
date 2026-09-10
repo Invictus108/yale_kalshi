@@ -2,7 +2,7 @@
 
 Flask + SQLite. Yale CAS (same pattern as Yale_Books), LMSR trading, friends/DMs, popular feed.
 
-## Quick start
+## Quick start (local)
 
 ```bash
 cd yale_kalshi
@@ -12,27 +12,22 @@ pip install -r requirements.txt
 python run.py
 ```
 
-Open **http://localhost:5000** (not `127.0.0.1` — must match `APP_BASE_URL`) and click **Sign in with CAS**.
+Open **http://localhost:5000** (must match `APP_BASE_URL`) → **Sign in with CAS**.
 
-### CAS (mirrors Yale_Books)
+## Deploy (Render)
 
-| Step | URL |
-|------|-----|
-| Start login | `/login` → Yale CAS |
-| Callback | `/login_callback?ticket=…` |
-| Validate | `…/cas/p3/serviceValidate` |
+See **[DEPLOY.md](DEPLOY.md)** for build/start commands and the full env-var list.
 
-Defaults:
-- Test CAS: `https://secure-tst.its.yale.edu/cas` (`CAS_USE_TEST=true`)
-- Service: `http://localhost:5000/login_callback`
+Short version:
 
-Production: set `CAS_USE_TEST=false` (uses `secure.its.yale.edu`).
+- Build: `pip install -r requirements.txt`
+- Start: `gunicorn -b 0.0.0.0:$PORT run:app`
+- Set `APP_BASE_URL` to your `https://….onrender.com` URL
 
-### Local NetID bypass
+## CAS
 
-`DEV_AUTH_BYPASS=true` → http://localhost:5000/dev-login
-
-See `HANDOFF.md` for architecture.
+Defaults use Yale test CAS (`secure-tst`), same as Yale_Books.  
+Callback: `{APP_BASE_URL}/login_callback`
 
 ## Disclaimer
 
