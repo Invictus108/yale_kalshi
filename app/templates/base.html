@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Yale Markets{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}Yalshi{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="{{ url_for('main.index') }}">Yale <em>Markets</em></a>
+    <a class="brand" href="{{ url_for('main.index') }}">Yal<em>shi</em></a>
     <button type="button" class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="siteNav">Menu</button>
     <nav class="nav" id="siteNav">
       <a href="{{ url_for('main.index') }}">Feed</a>
@@ -43,7 +43,7 @@
     {% block content %}{% endblock %}
   </main>
   <footer class="footer">
-    Play-money campus markets · Not real money · Not affiliated with Kalshi
+    Yalshi · Play-money campus markets · Not real money
   </footer>
   <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
 </body>

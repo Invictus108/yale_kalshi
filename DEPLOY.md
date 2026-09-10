@@ -64,10 +64,22 @@ python -c "import secrets; print(secrets.token_hex(32))"
 ## 4. After first deploy
 
 1. Open `https://YOUR-SERVICE-NAME.onrender.com`
-2. Click **Sign in with CAS** (Yale test CAS)
+2. Click **Sign in with CAS** — browser should go to **`secure-tst.its.yale.edu`** (not `secure.its`)
 3. Confirm login lands on `/login_callback` then home
 
 **CAS rule:** `APP_BASE_URL` must exactly match the URL you open in the browser.
+
+## CAS: “Not Authorized to this service”
+
+That page is Yale’s **production** CAS rejecting an unregistered app. Fix:
+
+| Key | Value |
+|-----|--------|
+| `CAS_USE_TEST` | `true` |
+| `APP_BASE_URL` | `https://yalshi.onrender.com` (exact URL, no trailing `/`) |
+| `ORIGIN` | same as `APP_BASE_URL` |
+
+Leave `CAS_LOGIN_URL` / `CAS_VALIDATE_URL` **unset**. Redeploy, then try again — URL bar should show `secure-tst`.
 
 ## Notes
 

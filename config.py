@@ -8,7 +8,9 @@ load_dotenv(BASE_DIR / ".env")
 
 
 def _cas_hosts(use_test: bool) -> tuple[str, str]:
-    # Mirror Yale_Books: secure-tst for dev/test; drop -tst for production.
+    # CRITICAL: production CAS (secure.its) requires ITS service registration.
+    # Student demos must use secure-tst (same as Yale_Books) or you get
+    # "You are Not Authorized to this service."
     host = "https://secure-tst.its.yale.edu/cas" if use_test else "https://secure.its.yale.edu/cas"
     return f"{host}/login", f"{host}/p3/serviceValidate"
 

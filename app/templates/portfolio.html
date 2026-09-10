@@ -31,6 +31,7 @@
 
 <div class="panel">
   <h3>Open positions</h3>
+  <div class="table-scroll">
   <table class="table">
     <thead><tr><th>Market</th><th>YES</th><th>NO</th><th>Mark</th></tr></thead>
     <tbody>
@@ -46,6 +47,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
 </div>
 
 {% if balance_series|length > 1 %}

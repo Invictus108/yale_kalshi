@@ -1,15 +1,21 @@
 {% extends "base.html" %}
-{% block title %}Yale Markets{% endblock %}
+{% block title %}Yalshi{% endblock %}
 {% block content %}
 
 {% if not current_user.is_authenticated %}
 <section class="hero-stage">
   <div class="hero-inner">
-    <h1 class="hero-brand">Yale <em>Markets</em></h1>
-    <p class="hero-lead">Play-money prediction markets for campus — trade what happens at Yale with friends.</p>
+    <h1 class="hero-brand">Yal<em>shi</em></h1>
+    <p class="hero-lead">Play-money prediction markets for Yale — trade campus events with friends.</p>
     <div class="hero-actions">
       <a class="btn btn-on-dark" href="{{ url_for('auth.login') }}">Sign in with Yale CAS</a>
     </div>
+    <p class="cas-hint">
+      Use Yale <strong>test</strong> CAS (<code>secure-tst</code>), same as Yale Books.
+      If you see “Not Authorized to this service,” set Render env
+      <code>CAS_USE_TEST=true</code> and
+      <code>APP_BASE_URL</code> to this site’s exact HTTPS URL (no trailing slash).
+    </p>
   </div>
 </section>
 {% else %}
@@ -26,7 +32,7 @@
 {% endif %}
 
 {% if current_user.is_authenticated or feed %}
-<section class="feed-list" {% if not current_user.is_authenticated %}style="margin-top:0"{% endif %}>
+<section class="feed-list">
   {% if not current_user.is_authenticated and feed %}
     <header class="feed-head">
       <div>
