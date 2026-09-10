@@ -3,20 +3,12 @@
 {% block content %}
 <div class="panel" style="max-width:520px;margin:0 auto;">
   <h2>Sign in</h2>
-  <p class="meta">
-    Yale CAS only allowlists registered service URLs.
-    <code>localhost</code> works (Yale Books). Public Render URLs get
-    <strong>Not Authorized</strong> until ITS registers your callback.
-  </p>
-
-  <a class="btn" href="{{ url_for('auth.login_cas') }}" style="width:100%;margin-top:0.5rem;">
-    Try Yale CAS (secure-tst)
-  </a>
 
   {% if friend_mode %}
-  <hr style="border:none;border-top:1px solid var(--line);margin:1.4rem 0;">
-  <h3>Friend access (NetID)</h3>
-  <p class="meta">Use this on Render until CAS is allowlisted. Share the access code privately.</p>
+  <p class="meta">
+    Enter your Yale NetID. (Public hosts can’t use Yale CAS until ITS allowlists the app —
+    same limit as Yale Books on Render.)
+  </p>
   <form method="post">
     <label for="netid">Yale NetID</label>
     <input id="netid" name="netid" placeholder="jd1234" required autofocus autocomplete="username">
@@ -26,16 +18,22 @@
     {% endif %}
     <button type="submit" style="width:100%">Continue</button>
   </form>
-  {% endif %}
 
   <details style="margin-top:1.25rem;">
-    <summary class="meta" style="cursor:pointer;">CAS debug</summary>
+    <summary class="meta" style="cursor:pointer;">Advanced: try Yale CAS</summary>
     <p class="meta" style="margin-top:0.6rem;">
-      Login: <code>{{ cas_status.cas_login_url }}</code><br>
-      Service: <code>{{ cas_status.service_url }}</code><br>
-      {{ cas_status.note }}
+      Works on <code>localhost</code> only right now. On Render you’ll get
+      “Not Authorized to this service.”
     </p>
-    <p class="meta"><a href="{{ url_for('auth.cas_debug') }}">/cas-debug</a> JSON</p>
+    <a class="btn ghost" href="{{ url_for('auth.login_cas') }}">Open Yale CAS</a>
+    <p class="meta" style="margin-top:0.75rem;">
+      Service: <code>{{ cas_status.service_url }}</code><br>
+      CAS: <code>{{ cas_status.cas_login_url }}</code>
+    </p>
   </details>
+  {% else %}
+  <p class="meta">Local CAS (Yale Books style) — service must be localhost.</p>
+  <a class="btn" href="{{ url_for('auth.login_cas') }}" style="width:100%;">Sign in with Yale CAS</a>
+  {% endif %}
 </div>
 {% endblock %}

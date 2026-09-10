@@ -48,9 +48,7 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for("main.index"))
 
-    friend_mode = bool(current_app.config.get("FRIEND_ACCESS_CODE")) or current_app.config[
-        "DEV_AUTH_BYPASS"
-    ]
+    friend_mode = bool(current_app.config.get("ENABLE_NETID_LOGIN"))
     require_code = bool(current_app.config.get("FRIEND_ACCESS_CODE"))
 
     if request.method == "POST" and friend_mode:

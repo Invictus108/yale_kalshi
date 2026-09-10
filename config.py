@@ -27,13 +27,19 @@ class Config:
         "https://secure-tst.its.yale.edu/cas/p3/serviceValidate",
     )
 
-    # NetID + invite login for Render (CAS blocks unregistered public service URLs).
+    # NetID login fallback: always on for non-localhost (Render), since Yale CAS
+    # only allowlists localhost unless ITS registers your public callback.
+    # Optional shared code for a bit of gatekeeping.
     FRIEND_ACCESS_CODE = os.getenv("FRIEND_ACCESS_CODE", "").strip()
     DEV_AUTH_BYPASS = os.getenv("DEV_AUTH_BYPASS", "false").lower() in {
         "1",
         "true",
         "yes",
-    } or bool(FRIEND_ACCESS_CODE)
+    }
+    # Auto-enable NetID form when serving a public URL (Yale_Books CAS can't).
+    ENABLE_NETID_LOGIN = DEV_AUTH_BYPASS or bool(FRIEND_ACCESS_CODE) or (
+        "localhost" not in APP_BASE_URL and "127.0.0.1" not in APP_BASE_URL
+    )
 
     BOOTSTRAP_ADMIN_NETID = os.getenv("BOOTSTRAP_ADMIN_NETID", "admin").lower()
     SEED_BALANCE = float(os.getenv("SEED_BALANCE", "10000"))
