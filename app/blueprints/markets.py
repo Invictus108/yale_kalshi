@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
@@ -17,6 +17,23 @@ from app.services.trading import execute_trade
 markets_bp = Blueprint("markets", __name__, url_prefix="/markets")
 
 
+def _parse_closes_at(raw: str, tz_offset_minutes: str) -> datetime:
+    """
+    datetime-local is the user's local wall clock (no tz).
+    Browser sends getTimezoneOffset() = (UTC - local) in minutes.
+    Convert to naive UTC for storage/compare with utcnow().
+    """
+    closes_local = datetime.fromisoformat(raw)
+    if closes_local.tzinfo is not None:
+        return closes_local.astimezone(timezone.utc).replace(tzinfo=None)
+    try:
+        offset = int(tz_offset_minutes or "0")
+    except ValueError:
+        offset = 0
+    # UTC = local + offset_minutes
+    return closes_local + timedelta(minutes=offset)
+
+
 @markets_bp.route("/new", methods=["GET", "POST"])
 @login_required
 def create():
@@ -27,10 +44,9 @@ def create():
         source = (request.form.get("resolution_source") or "").strip()
         closes_at_raw = request.form.get("closes_at") or ""
         try:
-            closes_at = datetime.fromisoformat(closes_at_raw)
-            # Store as naive UTC-ish local wall time for MVP (see HANDOFF.md).
-            if closes_at.tzinfo is not None:
-                closes_at = closes_at.replace(tzinfo=None)
+            closes_at = _parse_closes_at(
+                closes_at_raw, request.form.get("tz_offset_minutes", "0")
+            )
         except ValueError:
             flash("Invalid close time.", "danger")
             return render_template("markets/create.html")
@@ -38,8 +54,12 @@ def create():
         if not all([title, description, criteria, source]):
             flash("All fields required.", "warning")
             return render_template("markets/create.html")
-        if closes_at <= utcnow():
-            flash("Close time must be in the future.", "warning")
+        # Small skew buffer so "1–2 minutes from now" still works.
+        if closes_at <= utcnow() + timedelta(seconds=15):
+            flash(
+                "Close time must be at least ~30 seconds in the future (use your local time).",
+                "warning",
+            )
             return render_template("markets/create.html")
 
         from flask import current_app
