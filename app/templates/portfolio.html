@@ -31,19 +31,47 @@
 
 <div class="panel">
   <h3>Open positions</h3>
+  <p class="meta">Cash out anytime while the market is open — sells your shares at the live price.</p>
   <div class="table-scroll">
   <table class="table">
-    <thead><tr><th>Market</th><th>YES</th><th>NO</th><th>Mark</th></tr></thead>
+    <thead><tr><th>Market</th><th>YES</th><th>NO</th><th>Mark</th><th>Cash out</th></tr></thead>
     <tbody>
-      {% for p in positions %}
+      {% for row in position_rows %}
+      {% set p = row.pos %}
       <tr>
-        <td><a href="{{ url_for('markets.detail', market_id=p.market_id) }}">{{ p.market.title }}</a></td>
+        <td><a href="{{ url_for('markets.detail', market_id=p.market_id) }}">{{ p.market.title }}</a>
+          <div class="meta">{{ p.market.status }}</div>
+        </td>
         <td>{{ '%.2f'|format(p.yes_shares) }}</td>
         <td>{{ '%.2f'|format(p.no_shares) }}</td>
-        <td>{{ '%.2f'|format(p.yes_shares * p.market.price_yes + p.no_shares * p.market.price_no) }}</td>
+        <td>{{ '%.2f'|format(row.mark) }}</td>
+        <td>
+          {% if p.market.status == 'open' %}
+            <div class="btn-row">
+              {% if p.yes_shares > 0.0001 %}
+              <form method="post" action="{{ url_for('markets.cash_out_route', market_id=p.market_id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="side" value="YES">
+                <input type="hidden" name="next" value="/portfolio">
+                <button type="submit" class="ghost" style="margin-top:0">YES ~{{ '%.1f'|format(row.yes_cash_out) }}</button>
+              </form>
+              {% endif %}
+              {% if p.no_shares > 0.0001 %}
+              <form method="post" action="{{ url_for('markets.cash_out_route', market_id=p.market_id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="side" value="NO">
+                <input type="hidden" name="next" value="/portfolio">
+                <button type="submit" class="ghost" style="margin-top:0">NO ~{{ '%.1f'|format(row.no_cash_out) }}</button>
+              </form>
+              {% endif %}
+            </div>
+          {% else %}
+            <span class="meta">Wait for settlement</span>
+          {% endif %}
+        </td>
       </tr>
       {% else %}
-      <tr><td colspan="4" class="meta">No open positions — <a href="{{ url_for('main.index') }}">browse the feed</a>.</td></tr>
+      <tr><td colspan="5" class="meta">No open positions — <a href="{{ url_for('main.index') }}">browse the feed</a>.</td></tr>
       {% endfor %}
     </tbody>
   </table>

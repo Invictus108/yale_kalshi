@@ -42,8 +42,34 @@
 <div class="row">
   <div class="panel trade-form">
     <h3>Trade</h3>
-    {% if my_pos %}
-      <p class="meta">You hold YES {{ '%.2f'|format(my_pos.yes_shares) }} · NO {{ '%.2f'|format(my_pos.no_shares) }}</p>
+    {% if my_pos and (my_pos.yes_shares > 0.0001 or my_pos.no_shares > 0.0001) %}
+      <p class="meta">
+        You hold
+        {% if my_pos.yes_shares > 0.0001 %}YES {{ '%.2f'|format(my_pos.yes_shares) }} (mark ~{{ '%.2f'|format(my_pos.yes_shares * market.price_yes) }} pts){% endif %}
+        {% if my_pos.yes_shares > 0.0001 and my_pos.no_shares > 0.0001 %} · {% endif %}
+        {% if my_pos.no_shares > 0.0001 %}NO {{ '%.2f'|format(my_pos.no_shares) }} (mark ~{{ '%.2f'|format(my_pos.no_shares * market.price_no) }} pts){% endif %}
+      </p>
+      <div class="btn-row" style="margin-bottom:0.85rem;">
+        {% if my_pos.yes_shares > 0.0001 %}
+        <form method="post" action="{{ url_for('markets.cash_out_route', market_id=market.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="side" value="YES">
+          <button type="submit" class="secondary">
+            Cash out YES (~{{ '%.2f'|format(cash_out_quotes.YES) }} pts)
+          </button>
+        </form>
+        {% endif %}
+        {% if my_pos.no_shares > 0.0001 %}
+        <form method="post" action="{{ url_for('markets.cash_out_route', market_id=market.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="side" value="NO">
+          <button type="submit" class="secondary">
+            Cash out NO (~{{ '%.2f'|format(cash_out_quotes.NO) }} pts)
+          </button>
+        </form>
+        {% endif %}
+      </div>
+      <p class="meta">Cash out sells your shares back to the market at the live price — you don’t have to wait for settlement.</p>
     {% endif %}
     <form method="post" action="{{ url_for('markets.trade', market_id=market.id) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

@@ -97,6 +97,41 @@ def execute_trade(
     return trade
 
 
+def quote_sell_proceeds(market: Market, side: str, shares: float) -> float:
+    """Cash you'd receive selling `shares` of `side` at the current book (no mutation)."""
+    side = side.upper()
+    shares = float(shares)
+    if shares <= 1e-12:
+        return 0.0
+    cost, _, _ = amm.trade_cost(
+        market.q_yes, market.q_no, market.lmsr_b, side, "SELL", shares
+    )
+    return max(0.0, -cost)
+
+
+def cash_out(
+    *,
+    user_id: int,
+    market: Market,
+    side: str,
+) -> Trade:
+    """Sell all holdings of YES or NO back to the AMM at the live price."""
+    side = side.upper()
+    if side not in {"YES", "NO"}:
+        raise ValueError("side must be YES or NO")
+    pos = get_or_create_position(user_id, market.id)
+    held = pos.yes_shares if side == "YES" else pos.no_shares
+    if held <= 1e-9:
+        raise ValueError(f"no {side} shares to cash out")
+    return execute_trade(
+        user_id=user_id,
+        market=market,
+        side=side,
+        action="SELL",
+        shares=held,
+    )
+
+
 def settle_market(market: Market) -> None:
     """Pay $1 per winning share; void refunds cost basis approximately via share burn at 0.5."""
     if market.final_outcome not in {"YES", "NO", "VOID"}:

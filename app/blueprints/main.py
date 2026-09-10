@@ -39,14 +39,36 @@ def leaderboard():
 @main_bp.route("/portfolio")
 @login_required
 def portfolio():
+    from app.services.history import cash_balance_series
+    from app.services.trading import quote_sell_proceeds
+
     positions = [p for p in current_user.positions if p.yes_shares > 1e-9 or p.no_shares > 1e-9]
     cash = current_user.ledger.balance if current_user.ledger else 0.0
-    from app.services.history import cash_balance_series
-
     series = cash_balance_series(current_user.id)
+    position_rows = []
+    for p in positions:
+        yes_out = (
+            quote_sell_proceeds(p.market, "YES", p.yes_shares)
+            if p.market.status == "open" and p.yes_shares > 1e-9
+            else 0.0
+        )
+        no_out = (
+            quote_sell_proceeds(p.market, "NO", p.no_shares)
+            if p.market.status == "open" and p.no_shares > 1e-9
+            else 0.0
+        )
+        position_rows.append(
+            {
+                "pos": p,
+                "mark": p.yes_shares * p.market.price_yes + p.no_shares * p.market.price_no,
+                "yes_cash_out": yes_out,
+                "no_cash_out": no_out,
+            }
+        )
     return render_template(
         "portfolio.html",
         positions=positions,
+        position_rows=position_rows,
         cash=cash,
         total=portfolio_value(current_user),
         stats=user_stats(current_user),

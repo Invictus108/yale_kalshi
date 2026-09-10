@@ -12,7 +12,7 @@ from app.services.resolve import (
     finalize_resolution,
     propose_resolution,
 )
-from app.services.trading import execute_trade
+from app.services.trading import cash_out, execute_trade, quote_sell_proceeds
 
 markets_bp = Blueprint("markets", __name__, url_prefix="/markets")
 
@@ -103,14 +103,25 @@ def detail(market_id: int):
         .all()
     )
     my_pos = None
+    cash_out_quotes = {"YES": 0.0, "NO": 0.0}
     if current_user.is_authenticated:
         my_pos = next((p for p in current_user.positions if p.market_id == market.id), None)
+        if my_pos and market.status == "open":
+            if my_pos.yes_shares > 1e-9:
+                cash_out_quotes["YES"] = quote_sell_proceeds(
+                    market, "YES", my_pos.yes_shares
+                )
+            if my_pos.no_shares > 1e-9:
+                cash_out_quotes["NO"] = quote_sell_proceeds(
+                    market, "NO", my_pos.no_shares
+                )
     return render_template(
         "markets/detail.html",
         market=market,
         trades=trades,
         messages=list(reversed(messages)),
         my_pos=my_pos,
+        cash_out_quotes=cash_out_quotes,
     )
 
 
@@ -135,6 +146,30 @@ def trade(market_id: int):
     except ValueError as exc:
         db.session.rollback()
         flash(str(exc), "danger")
+    return redirect(url_for("markets.detail", market_id=market.id))
+
+
+@markets_bp.route("/<int:market_id>/cash-out", methods=["POST"])
+@login_required
+def cash_out_route(market_id: int):
+    """Sell all YES or NO holdings back to the market at the live AMM price."""
+    market = Market.query.get_or_404(market_id)
+    close_if_expired(market)
+    side = (request.form.get("side") or "YES").upper()
+    try:
+        trade = cash_out(user_id=current_user.id, market=market, side=side)
+        db.session.commit()
+        flash(
+            f"Cashed out {trade.shares:.2f} {side} for ~{trade.cost:.2f} pts "
+            f"(~{trade.avg_price * 100:.1f}¢/share).",
+            "success",
+        )
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), "danger")
+    next_url = request.form.get("next") or ""
+    if next_url.startswith("/portfolio"):
+        return redirect(url_for("main.portfolio"))
     return redirect(url_for("markets.detail", market_id=market.id))
 
 
