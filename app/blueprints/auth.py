@@ -163,9 +163,4 @@ def settings():
             db.session.commit()
             flash("Settings saved.", "success")
             return redirect(url_for("auth.settings"))
-    return render_template(
-        "auth/settings.html",
-        cas_enabled=True,
-        service_url=cas_svc.service_url(),
-        cas_login_url=cas_svc.cas_login_url(),
-    )
+    return render_template("auth/settings.html")

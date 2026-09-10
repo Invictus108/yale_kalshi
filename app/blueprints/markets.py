@@ -63,8 +63,6 @@ def create():
             )
             return render_template("markets/create.html")
 
-        from flask import current_app
-
         market = Market(
             title=title[:200],
             description=description,

@@ -2,9 +2,21 @@
 
 **Yale’s campus prediction market — play points only.**
 
+Built for the **Fall 2026 Yale AI × Cursor Hackathon**.
+
+### Demo video
+
+**Watch the walkthrough:** [https://youtu.be/GVpVMCxtQyI](https://youtu.be/GVpVMCxtQyI)
+
 Yalshi is a Kalshi-style app for Yale students: create binary YES/NO markets about campus life, trade against an automated market maker, follow friends, and settle outcomes with a dispute window. Nothing here is real money.
 
 Live idea: *Will Yale win The Game?* · *Will the next snow day cancel classes?* · *Will this dining hall run out of chicken fingers before Friday?*
+
+### Built with Cursor
+
+This project was developed in [Cursor](https://cursor.com) (agent-assisted coding, local run, and UI iteration):
+
+![Yalshi running in Cursor — agent panel, local server, and Messages UI](docs/cursor-hackathon-build.png)
 
 ---
 
