@@ -39,6 +39,7 @@ Set **all** of these (replace placeholders):
 | `APP_BASE_URL` | `https://YOUR-SERVICE-NAME.onrender.com` (no trailing slash) |
 | `ORIGIN` | same as `APP_BASE_URL` |
 | `BOOTSTRAP_ADMIN_NETID` | your Yale NetID (lowercase, no `@yale.edu`) |
+| `FRIEND_ACCESS_CODE` | shared secret so friends can NetID-login (required on Render) |
 | `SEED_BALANCE` | `10000` |
 | `LMSR_B` | `100` |
 | `DISPUTE_HOURS` | `24` |
@@ -71,15 +72,29 @@ python -c "import secrets; print(secrets.token_hex(32))"
 
 ## CAS: “Not Authorized to this service”
 
-That page is Yale’s **production** CAS rejecting an unregistered app. Fix:
+Your env vars can be correct and this still happens. Live check:
 
-| Key | Value |
-|-----|--------|
-| `CAS_USE_TEST` | `true` |
-| `APP_BASE_URL` | `https://yalshi.onrender.com` (exact URL, no trailing `/`) |
-| `ORIGIN` | same as `APP_BASE_URL` |
+Yalshi redirects to  
+`https://secure-tst.its.yale.edu/cas/login?service=https://yalshi.onrender.com/login_callback`  
+…and Yale still returns **403 Not Authorized**.
 
-Leave `CAS_LOGIN_URL` / `CAS_VALIDATE_URL` **unset**. Redeploy, then try again — URL bar should show `secure-tst`.
+Same as Yale Books limits today:
+
+| `service=` | secure-tst result |
+|------------|-------------------|
+| `http://localhost:5000/login_callback` | OK |
+| `https://yalshi.onrender.com/login_callback` | Not Authorized |
+| `https://yale-books.onrender.com/login_callback` | Not Authorized |
+
+**Workaround for friend testing on Render** — add:
+
+```text
+FRIEND_ACCESS_CODE=pick-a-secret
+```
+
+Then `/login` shows NetID + access code. CAS stays available for after ITS allowlists your callback.
+
+Debug: `https://yalshi.onrender.com/cas-debug`
 
 ## Notes
 

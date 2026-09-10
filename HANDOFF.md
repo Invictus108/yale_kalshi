@@ -116,7 +116,12 @@ python run.py
 9. **SQLite datetime:** switched `utcnow()` to naive `datetime.utcnow()` to avoid aware/naive compare errors.
 10. Removed unused `flask_login` import alias in `app/__init__.py`.
 
-### 2026-09-09 — Render deploy kit
+### 2026-09-09 — CAS Not Authorized root cause
+
+Live probe: Yalshi correctly uses secure-tst + `https://yalshi.onrender.com/login_callback`.
+Yale test CAS still 403s that service URL. localhost works (Yale_Books). Render URLs do not.
+Added FRIEND_ACCESS_CODE NetID login + `/cas-debug`; CAS code aligned to Yale_Books hardcoding.
+
 
 1. Added `gunicorn` to `requirements.txt` and `Procfile`.
 2. Added `DEPLOY.md` with Render build/start commands + env var table.

@@ -7,36 +7,33 @@ BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
 
-def _cas_hosts(use_test: bool) -> tuple[str, str]:
-    # CRITICAL: production CAS (secure.its) requires ITS service registration.
-    # Student demos must use secure-tst (same as Yale_Books) or you get
-    # "You are Not Authorized to this service."
-    host = "https://secure-tst.its.yale.edu/cas" if use_test else "https://secure.its.yale.edu/cas"
-    return f"{host}/login", f"{host}/p3/serviceValidate"
-
-
 class Config:
     SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "dev-only-insecure-key")
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{BASE_DIR / 'yale_markets.db'}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    # Yale_Books: ORIGIN + "/login_callback"
+    ORIGIN = os.getenv("ORIGIN", os.getenv("APP_BASE_URL", "http://localhost:5000")).rstrip(
+        "/"
+    )
+    APP_BASE_URL = os.getenv("APP_BASE_URL", ORIGIN).rstrip("/")
+
+    # Hardcoded Yale_Books test CAS URLs (do not point these at secure.its without ITS).
+    CAS_LOGIN_URL = os.getenv(
+        "CAS_LOGIN_URL", "https://secure-tst.its.yale.edu/cas/login"
+    )
+    CAS_VALIDATE_URL = os.getenv(
+        "CAS_VALIDATE_URL",
+        "https://secure-tst.its.yale.edu/cas/p3/serviceValidate",
+    )
+
+    # NetID + invite login for Render (CAS blocks unregistered public service URLs).
+    FRIEND_ACCESS_CODE = os.getenv("FRIEND_ACCESS_CODE", "").strip()
     DEV_AUTH_BYPASS = os.getenv("DEV_AUTH_BYPASS", "false").lower() in {
         "1",
         "true",
         "yes",
-    }
-
-    # Same shape as Yale_Books: ORIGIN/APP_BASE_URL + /login_callback
-    # Yale_Books defaults to http://localhost:5000
-    APP_BASE_URL = os.getenv(
-        "APP_BASE_URL",
-        os.getenv("ORIGIN", "http://localhost:5000"),
-    ).rstrip("/")
-
-    CAS_USE_TEST = os.getenv("CAS_USE_TEST", "true").lower() in {"1", "true", "yes"}
-    _login, _validate = _cas_hosts(CAS_USE_TEST)
-    CAS_LOGIN_URL = os.getenv("CAS_LOGIN_URL", _login)
-    CAS_VALIDATE_URL = os.getenv("CAS_VALIDATE_URL", _validate)
+    } or bool(FRIEND_ACCESS_CODE)
 
     BOOTSTRAP_ADMIN_NETID = os.getenv("BOOTSTRAP_ADMIN_NETID", "admin").lower()
     SEED_BALANCE = float(os.getenv("SEED_BALANCE", "10000"))

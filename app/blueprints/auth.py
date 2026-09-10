@@ -31,41 +31,95 @@ def admin_required(fn):
     return wrapper
 
 
-@auth_bp.route("/login")
+@auth_bp.route("/cas-debug")
+def cas_debug():
+    """Public: show which CAS URLs the server is using (no secrets)."""
+    return cas_svc.cas_public_status()
+
+
+@auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     """
-    Redirect to Yale CAS — same pattern as Yale_Books.
-    Ticket returns to /login_callback (not here).
+    Login hub.
+    - CAS button → /login/cas (Yale_Books redirect)
+    - Friend NetID form when FRIEND_ACCESS_CODE or DEV_AUTH_BYPASS is set
+      (needed on Render: test CAS only allowlists localhost services)
     """
     if current_user.is_authenticated:
         return redirect(url_for("main.index"))
 
-    if current_app.config["DEV_AUTH_BYPASS"] and request.args.get("dev") == "1":
-        return redirect(url_for("auth.dev_login"))
+    friend_mode = bool(current_app.config.get("FRIEND_ACCESS_CODE")) or current_app.config[
+        "DEV_AUTH_BYPASS"
+    ]
+    require_code = bool(current_app.config.get("FRIEND_ACCESS_CODE"))
+
+    if request.method == "POST" and friend_mode:
+        netid = (request.form.get("netid") or "").strip().lower()
+        code = (request.form.get("access_code") or "").strip()
+        expected = current_app.config.get("FRIEND_ACCESS_CODE") or ""
+
+        if require_code and code != expected:
+            flash("Wrong access code.", "danger")
+            return render_template(
+                "auth/login.html",
+                friend_mode=friend_mode,
+                require_code=require_code,
+                cas_status=cas_svc.cas_public_status(),
+            )
+        if not netid:
+            flash("Enter your Yale NetID.", "warning")
+            return render_template(
+                "auth/login.html",
+                friend_mode=friend_mode,
+                require_code=require_code,
+                cas_status=cas_svc.cas_public_status(),
+            )
+
+        user = get_or_create_user(netid)
+        login_user(user, remember=True)
+        flash(f"Signed in as {netid}.", "success")
+        return redirect(request.args.get("next") or url_for("main.index"))
+
+    return render_template(
+        "auth/login.html",
+        friend_mode=friend_mode,
+        require_code=require_code,
+        cas_status=cas_svc.cas_public_status(),
+    )
+
+
+@auth_bp.route("/login/cas")
+def login_cas():
+    """Exact Yale_Books redirect: CAS login with service=ORIGIN/login_callback."""
+    if current_user.is_authenticated:
+        return redirect(url_for("main.index"))
 
     nxt = request.args.get("next") or url_for("main.index")
     session["post_login_next"] = nxt
 
+    # Yale_Books:
+    #   params = {"service": SERVICE_URL}
+    #   cas_url = f"{CAS_LOGIN_URL}?{urlencode(params)}"
     params = {"service": cas_svc.service_url()}
     cas_url = f"{cas_svc.cas_login_url()}?{urlencode(params)}"
-    current_app.logger.info("CAS login redirect service=%s url=%s", params["service"], cas_url)
+    current_app.logger.info("CAS redirect → %s", cas_url)
     return redirect(cas_url)
 
 
 @auth_bp.route("/login_callback")
 def login_callback():
-    """CAS returns here with ?ticket=… — validate then create session."""
+    """Yale_Books callback: ticket → validate → session."""
     ticket = request.args.get("ticket")
     if not ticket:
         flash("Missing CAS ticket.", "danger")
-        return redirect(url_for("main.index"))
+        return redirect(url_for("auth.login"))
 
     try:
         netid = cas_svc.validate_ticket(ticket)
     except Exception as exc:  # noqa: BLE001
         current_app.logger.exception("CAS validate failed: %s", exc)
         flash(f"CAS authentication failed: {exc}", "danger")
-        return redirect(url_for("main.index"))
+        return redirect(url_for("auth.login"))
 
     user = get_or_create_user(netid)
     login_user(user, remember=True)
@@ -76,26 +130,11 @@ def login_callback():
 
 @auth_bp.route("/dev-login", methods=["GET", "POST"])
 def dev_login():
-    if not current_app.config["DEV_AUTH_BYPASS"]:
-        flash("Dev login is disabled. Use Yale CAS.", "warning")
-        return redirect(url_for("auth.login"))
-    if current_user.is_authenticated:
-        return redirect(url_for("main.index"))
-    if request.method == "POST":
-        netid = (request.form.get("netid") or "").strip().lower()
-        if not netid:
-            flash("Enter a NetID.", "warning")
-            return render_template("auth/dev_login.html")
-        user = get_or_create_user(netid)
-        login_user(user, remember=True)
-        flash(f"Dev login as {netid}.", "success")
-        return redirect(request.args.get("next") or url_for("main.index"))
-    return render_template("auth/dev_login.html")
+    return redirect(url_for("auth.login"))
 
 
 @auth_bp.route("/logout")
 def logout():
-    """Local logout (matches Yale_Books — clear session, return home)."""
     logout_user()
     session.clear()
     flash("Signed out.", "info")
@@ -122,7 +161,7 @@ def settings():
             return redirect(url_for("auth.settings"))
     return render_template(
         "auth/settings.html",
-        cas_enabled=not current_app.config["DEV_AUTH_BYPASS"],
+        cas_enabled=True,
         service_url=cas_svc.service_url(),
         cas_login_url=cas_svc.cas_login_url(),
     )

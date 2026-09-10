@@ -8,13 +8,14 @@
     <h1 class="hero-brand">Yal<em>shi</em></h1>
     <p class="hero-lead">Play-money prediction markets for Yale — trade campus events with friends.</p>
     <div class="hero-actions">
-      <a class="btn btn-on-dark" href="{{ url_for('auth.login') }}">Sign in with Yale CAS</a>
+      <a class="btn btn-on-dark" href="{{ url_for('auth.login') }}">Sign in</a>
     </div>
     <p class="cas-hint">
-      Use Yale <strong>test</strong> CAS (<code>secure-tst</code>), same as Yale Books.
-      If you see “Not Authorized to this service,” set Render env
-      <code>CAS_USE_TEST=true</code> and
-      <code>APP_BASE_URL</code> to this site’s exact HTTPS URL (no trailing slash).
+      On Render, Yale CAS returns <strong>Not Authorized</strong> for public URLs
+      (even <code>secure-tst</code>) until ITS allowlists
+      <code>…/login_callback</code>. Yale Books only works with
+      <code>localhost</code> today. Use <strong>Friend access</strong> on the
+      sign-in page (set <code>FRIEND_ACCESS_CODE</code> on Render).
     </p>
   </div>
 </section>

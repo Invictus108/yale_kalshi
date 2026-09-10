@@ -1,23 +1,40 @@
-"""Yale CAS helpers — mirrors Yale_Books backend/app.py flow."""
+"""Yale CAS helpers — mirrors Yale_Books backend/app.py exactly."""
 
 from __future__ import annotations
+
+import os
 
 import requests
 import xmltodict
 from flask import current_app
 
+# Hardcoded like Yale_Books (test CAS). Prod requires ITS service registration.
+CAS_LOGIN_URL = "https://secure-tst.its.yale.edu/cas/login"
+CAS_VALIDATE_URL = "https://secure-tst.its.yale.edu/cas/p3/serviceValidate"
+
 
 def cas_login_url() -> str:
-    return current_app.config["CAS_LOGIN_URL"]
+    # Allow env override only if explicitly set; default = Yale_Books test CAS.
+    return current_app.config.get("CAS_LOGIN_URL") or CAS_LOGIN_URL
 
 
 def cas_validate_url() -> str:
-    return current_app.config["CAS_VALIDATE_URL"]
+    return current_app.config.get("CAS_VALIDATE_URL") or CAS_VALIDATE_URL
 
 
 def service_url() -> str:
-    """Must match exactly what was sent to CAS as service= (login_callback)."""
-    return current_app.config["APP_BASE_URL"].rstrip("/") + "/login_callback"
+    """
+    Same as Yale_Books:
+      SERVICE_URL = os.getenv("ORIGIN", "http://localhost:5000") + "/login_callback"
+    We also honor APP_BASE_URL (alias for ORIGIN).
+    """
+    origin = (
+        current_app.config.get("APP_BASE_URL")
+        or current_app.config.get("ORIGIN")
+        or os.getenv("ORIGIN")
+        or "http://localhost:5000"
+    ).rstrip("/")
+    return origin + "/login_callback"
 
 
 def parse_cas_response(xml_text: str) -> dict:
@@ -25,10 +42,7 @@ def parse_cas_response(xml_text: str) -> dict:
 
 
 def validate_ticket(ticket: str) -> str:
-    """
-    Validate a CAS service ticket and return NetID.
-    Same approach as Yale_Books: GET p3/serviceValidate + xmltodict.
-    """
+    """Validate CAS ticket → NetID (Yale_Books flow)."""
     params = {
         "ticket": ticket,
         "service": service_url(),
@@ -39,8 +53,9 @@ def validate_ticket(ticket: str) -> str:
 
     sr = data.get("cas:serviceResponse", {})
 
-    if "cas:authenticationFailure" in sr or "authenticationFailure" in sr:
-        failure = sr.get("cas:authenticationFailure") or sr.get("authenticationFailure") or {}
+    # Yale_Books checks key without cas: prefix after xmltodict; handle both.
+    failure = sr.get("cas:authenticationFailure") or sr.get("authenticationFailure")
+    if failure:
         if isinstance(failure, dict):
             reason = failure.get("@code", failure.get("#text", "UNKNOWN"))
         else:
@@ -57,3 +72,17 @@ def validate_ticket(ticket: str) -> str:
     if not netid:
         raise RuntimeError("CAS success response missing user/NetID")
     return str(netid).strip().lower()
+
+
+def cas_public_status() -> dict:
+    """Safe debug payload (no secrets)."""
+    return {
+        "cas_login_url": cas_login_url(),
+        "cas_validate_url": cas_validate_url(),
+        "service_url": service_url(),
+        "note": (
+            "Yale test CAS allows http://localhost:5000/login_callback "
+            "(Yale_Books). Public Render URLs return "
+            "'Not Authorized to this service' until ITS allowlists them."
+        ),
+    }
