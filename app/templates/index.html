@@ -28,7 +28,7 @@
     <h3>{{ m.title }}</h3><p class="blurb">{{ m.description[:130] }}{% if m.description|length > 130 %}…{% endif %}</p>
     <div class="market-odds"><strong>{{ '%.0f'|format(m.price_yes * 100) }}<small>%</small></strong><span>chance of YES</span></div>
     <div class="probability-track" aria-hidden="true"><span style="width:{{ m.price_yes * 100 }}%"></span></div>
-    {% if m.status == 'open' %}<div class="prices"><div class="price yes"><small>Yes</small><span>{{ '%.0f'|format(m.price_yes * 100) }}¢</span></div><div class="price no"><small>No</small><span>{{ '%.0f'|format(m.price_no * 100) }}¢</span></div></div>{% else %}<p class="awaiting-label">Trading closed · Awaiting resolution</p>{% endif %}
+    {% if m.status == 'open' %}<div class="prices"><div class="price yes"><small>Yes</small><span>{{ '%.0f'|format(m.price_yes * 100) }}¢</span></div><div class="price no"><small>No</small><span>{{ '%.0f'|format(m.price_no * 100) }}¢</span></div></div>{% else %}<p class="awaiting-label">Purchases closed · Cash-out available</p>{% endif %}
     <div class="card-footer"><span>{{ card.trader_count }} trader{{ 's' if card.trader_count != 1 }} · {{ card.trade_count }} trade{{ 's' if card.trade_count != 1 }}</span><span>{{ m.closes_at.strftime('%b %d') }}</span></div>
     {% if card.friends %}<div class="friend-line">{{ card.friends|length }} friend{{ 's' if card.friends|length != 1 }} joined this market</div>{% endif %}
   </a>

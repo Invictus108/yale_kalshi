@@ -7,22 +7,22 @@
   <form method="post" id="createMarketForm">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="title">Title</label>
-    <input id="title" name="title" maxlength="200" required placeholder="Will Yale beat Harvard in The Game?">
+    <input id="title" name="title" maxlength="200" required placeholder="Will Yale beat Harvard in The Game?" value="{{ request.form.get('title', '') }}">
 
     <label for="description">Description</label>
-    <textarea id="description" name="description" rows="3" required></textarea>
+    <textarea id="description" name="description" rows="3" required>{{ request.form.get('description', '') }}</textarea>
 
     <label for="resolution_criteria">Resolution criteria</label>
     <textarea id="resolution_criteria" name="resolution_criteria" rows="4" required
-      placeholder="Resolves YES if … per the official box score on [date]."></textarea>
+      placeholder="Resolves YES if … per the official box score on [date].">{{ request.form.get('resolution_criteria', '') }}</textarea>
 
     <label for="resolution_source">Resolution source</label>
-    <input id="resolution_source" name="resolution_source" required placeholder="Official athletics URL, YDN, etc.">
+    <input id="resolution_source" name="resolution_source" maxlength="500" required placeholder="Official athletics URL, YDN, etc." value="{{ request.form.get('resolution_source', '') }}">
 
-    <label for="closes_at">Trading closes (your local time)</label>
-    <input id="closes_at" name="closes_at" type="datetime-local" required>
+    <label for="closes_at">Purchases close (your local time)</label>
+    <input id="closes_at" name="closes_at" type="datetime-local" required value="{{ request.form.get('closes_at', '') }}">
     <input type="hidden" name="tz_offset_minutes" id="tz_offset_minutes" value="0">
-    <p class="meta">No long minimum — a minute or two from now is fine. Time is read in your timezone.</p>
+    <p class="meta">Choose a time at least 30 seconds from now, allowing time for admin approval. Holders can still sell after purchases close, until settlement.</p>
 
     <div class="btn-row" style="margin-top:1rem;">
       <button type="submit">Submit for approval</button>

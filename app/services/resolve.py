@@ -48,6 +48,8 @@ def maybe_auto_resolve(market: Market) -> bool:
             Market.id == market.id,
             Market.status == "proposed",
             Market.dispute_deadline <= now,
+            Market.dispute_deadline == market.dispute_deadline,
+            Market.proposed_outcome == market.proposed_outcome,
         )
         .values(
             final_outcome=outcome,
@@ -70,6 +72,13 @@ def refresh_market(market: Market) -> None:
     """Lazy lifecycle: close expired opens, auto-resolve undisputed proposals."""
     close_if_expired(market)
     maybe_auto_resolve(market)
+
+
+def refresh_active_markets() -> None:
+    """Persist due lifecycle changes before building balances and positions."""
+    for market in Market.query.filter(Market.status.in_(["open", "proposed"])).order_by(Market.id).all():
+        refresh_market(market)
+    db.session.commit()
 
 
 def propose_resolution(
@@ -133,6 +142,8 @@ def finalize_resolution(
     outcome: str,
 ) -> None:
     """Admin settle: applies immediately (no dispute-window wait)."""
+    if db.engine.dialect.name == "postgresql":
+        db.session.refresh(market, with_for_update=True)
     outcome = outcome.upper()
     if outcome not in {"YES", "NO", "VOID"}:
         raise ValueError("outcome must be YES, NO, or VOID")

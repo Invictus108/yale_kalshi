@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ market.title }} · Yalshi{% endblock %}
 {% block content %}
+{% set has_position = my_pos and (my_pos.yes_shares > 0.000000001 or my_pos.no_shares > 0.000000001) %}
 <div class="panel detail-hero">
   <div class="market-row-top">
     <span class="badge {{ market.status }}">{{ market.status }}</span>
@@ -18,7 +19,7 @@
     <p class="meta" style="margin:0.5rem 0 0">Source: {{ market.resolution_source }}</p>
   </div>
 
-  {% if market.status == 'open' %}
+  {% if market.can_cash_out %}
   <div class="prices" style="margin-top:1.1rem;">
     <div class="price yes"><small>Yes</small><span>{{ '%.1f'|format(market.price_yes * 100) }}¢</span></div>
     <div class="price no"><small>No</small><span>{{ '%.1f'|format(market.price_no * 100) }}¢</span></div>
@@ -40,21 +41,22 @@
   {% if market.final_outcome %}
     <p style="margin-top:1rem"><span class="badge resolved">Final {{ market.final_outcome }}</span></p>
   {% endif %}
+  {% if market.rejection_reason %}<p class="meta"><strong>Rejection reason:</strong> {{ market.rejection_reason }}</p>{% endif %}
 </div>
 
-{% if market.status == 'open' and current_user.is_authenticated %}
+{% if market.can_cash_out and current_user.is_authenticated %}
 <div class="row">
   <div class="panel trade-form">
     <h3>Trade</h3>
-    {% if my_pos and (my_pos.yes_shares > 0.0001 or my_pos.no_shares > 0.0001) %}
+    {% if my_pos and (my_pos.yes_shares > 0.000000001 or my_pos.no_shares > 0.000000001) %}
       <p class="meta">
         You hold
-        {% if my_pos.yes_shares > 0.0001 %}YES {{ '%.2f'|format(my_pos.yes_shares) }} (mark ~{{ '%.2f'|format(my_pos.yes_shares * market.price_yes) }} pts){% endif %}
-        {% if my_pos.yes_shares > 0.0001 and my_pos.no_shares > 0.0001 %} · {% endif %}
-        {% if my_pos.no_shares > 0.0001 %}NO {{ '%.2f'|format(my_pos.no_shares) }} (mark ~{{ '%.2f'|format(my_pos.no_shares * market.price_no) }} pts){% endif %}
+        {% if my_pos.yes_shares > 0.000000001 %}YES {{ '%.2f'|format(my_pos.yes_shares) }} (mark ~{{ '%.2f'|format(my_pos.yes_shares * market.price_yes) }} pts){% endif %}
+        {% if my_pos.yes_shares > 0.000000001 and my_pos.no_shares > 0.000000001 %} · {% endif %}
+        {% if my_pos.no_shares > 0.000000001 %}NO {{ '%.2f'|format(my_pos.no_shares) }} (mark ~{{ '%.2f'|format(my_pos.no_shares * market.price_no) }} pts){% endif %}
       </p>
       <div class="btn-row" style="margin-bottom:0.85rem;">
-        {% if my_pos.yes_shares > 0.0001 %}
+        {% if my_pos.yes_shares > 0.000000001 %}
         <form method="post" action="{{ url_for('markets.cash_out_route', market_id=market.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="side" value="YES">
@@ -63,7 +65,7 @@
           </button>
         </form>
         {% endif %}
-        {% if my_pos.no_shares > 0.0001 %}
+        {% if my_pos.no_shares > 0.000000001 %}
         <form method="post" action="{{ url_for('markets.cash_out_route', market_id=market.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="side" value="NO">
@@ -73,8 +75,9 @@
         </form>
         {% endif %}
       </div>
-      <p class="meta">Cash out sells your shares back to the market at the live price — you don’t have to wait for settlement.</p>
+      <p class="meta">Cash out sells all shares on that side and adds the proceeds to your play-point balance. Estimates include price movement from your sale; the final amount may change before you submit.</p>
     {% endif %}
+    {% if market.status == 'open' or has_position %}
     <form method="post" action="{{ url_for('markets.trade', market_id=market.id) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label>Side</label>
@@ -83,11 +86,13 @@
         <label class="choice"><input type="radio" name="side" value="NO"> NO</label>
       </div>
       <label for="action">Action</label>
-      <select id="action" name="action"><option>BUY</option><option>SELL</option></select>
+      <select id="action" name="action">{% if market.status == 'open' %}<option value="BUY">Buy shares</option>{% endif %}<option value="SELL">Sell shares</option></select>
+      {% if market.status != 'open' %}<p class="meta">New purchases are closed. You can still sell held shares until settlement.</p>{% endif %}
       <label for="shares">Shares</label>
       <input id="shares" name="shares" type="number" step="0.01" min="0.01" value="5" required>
       <button type="submit">Place trade</button>
     </form>
+    {% else %}<p class="meta">Purchases are closed and you have no shares left to sell.</p>{% endif %}
   </div>
   <div class="panel">
     <h3>Recent trades</h3>
@@ -107,6 +112,26 @@
     </table></div>
   </div>
 </div>
+{% endif %}
+
+{% if current_user.is_authenticated and position_series|length > 1 %}
+<div class="panel">
+  <h3>Your position value</h3>
+  <p class="meta">Mark-to-market of your stake as the market trades — updates when anyone moves the price.</p>
+  <div class="chart-wrap">
+    <canvas id="positionValueChart" height="120" aria-label="Your position value over time"></canvas>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    window.yalshiLineChart(
+      document.getElementById("positionValueChart"),
+      {{ position_series | tojson }},
+      { valueKey: "mark", label: "Position mark", color: "#14654e", fill: "rgba(20, 101, 78, 0.12)" }
+    );
+  });
+</script>
 {% endif %}
 
 {% if market.status == 'open' and not current_user.is_authenticated %}
@@ -146,8 +171,8 @@
   <p class="meta">Settles immediately — no need to wait out the dispute window.</p>
   <form method="post" action="{{ url_for('markets.finalize', market_id=market.id) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label for="outcome">Final outcome</label>
-      <select id="outcome" name="outcome"><option>YES</option><option>NO</option><option>VOID</option></select>
+    <label for="final-outcome">Final outcome</label>
+      <select id="final-outcome" name="outcome"><option>YES</option><option>NO</option><option>VOID</option></select>
     <button type="submit">Settle now</button>
   </form>
 </div>

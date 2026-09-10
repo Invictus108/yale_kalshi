@@ -46,3 +46,66 @@ document.addEventListener("keydown", event => {
   }
 });
 document.querySelectorAll(".chat").forEach(chat => { chat.scrollTop = chat.scrollHeight; });
+
+/** Shared Chart.js line helper for cash / bet mark series. */
+window.yalshiLineChart = function yalshiLineChart(canvas, series, opts) {
+  if (!canvas || !series || series.length < 2) return null;
+  if (!window.Chart) {
+    const message = document.createElement("p");
+    message.className = "meta";
+    message.textContent = "Chart unavailable. Your balances and positions are shown above. Refresh to try again.";
+    canvas.replaceWith(message);
+    return null;
+  }
+  const valueKey = opts.valueKey || "mark";
+  const label = opts.label || "Value";
+  const color = opts.color || "#00356b";
+  return new Chart(canvas, {
+    type: "line",
+    data: {
+      labels: series.map((p) => p.t),
+      datasets: [{
+        label,
+        data: series.map((p) => p[valueKey]),
+        borderColor: color,
+        backgroundColor: opts.fill || "rgba(0, 53, 107, 0.10)",
+        fill: true,
+        tension: 0.25,
+        pointRadius: series.length > 24 ? 0 : 3,
+        pointHoverRadius: 5,
+        pointBackgroundColor: color,
+        borderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            afterLabel: (item) => {
+              const p = series[item.dataIndex];
+              if (!p) return "";
+              const bits = [];
+              if (p.note) bits.push(p.note);
+              else if (p.kind) bits.push(p.kind);
+              if (p.price_yes != null) bits.push(`YES ${p.price_yes}¢`);
+              return bits.join(" · ");
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8, color: "#5a6b7d", font: { size: 11 } },
+          grid: { display: false },
+        },
+        y: {
+          ticks: { color: "#5a6b7d", font: { size: 11 } },
+          grid: { color: "rgba(207, 216, 227, 0.7)" },
+        },
+      },
+    },
+  });
+};

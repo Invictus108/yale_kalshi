@@ -1,4 +1,5 @@
 from flask import Flask
+import math
 
 from app.extensions import db, login_manager
 from config import Config
@@ -7,6 +8,10 @@ from config import Config
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+    for key, minimum, inclusive in [("LMSR_B", 0, False), ("SEED_BALANCE", 0, True), ("DISPUTE_HOURS", 0, True)]:
+        value = float(app.config[key])
+        if not math.isfinite(value) or (value < minimum if inclusive else value <= minimum):
+            raise ValueError(f"{key} must be finite and {'nonnegative' if inclusive else 'positive'}")
 
     db.init_app(app)
     login_manager.init_app(app)
@@ -33,6 +38,14 @@ def create_app(config_class=Config):
     app.register_blueprint(markets_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(social_bp)
+
+    @app.cli.command("settle-markets")
+    def settle_markets_command():
+        """Close expired markets and settle due, undisputed proposals."""
+        import click
+        from app.services.resolve import refresh_active_markets
+        refresh_active_markets()
+        click.echo("Market lifecycle updates committed.")
 
     with app.app_context():
         db.create_all()

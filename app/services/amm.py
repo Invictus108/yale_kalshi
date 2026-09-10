@@ -38,12 +38,14 @@ def trade_cost(
     """
     if not all(math.isfinite(v) for v in (shares, q_yes, q_no, b)):
         raise ValueError("trade values must be finite")
-    if b <= 0 or shares <= 0 or shares > 1_000_000:
-        raise ValueError("shares must be between 0 and 1,000,000; liquidity must be positive")
+    if b <= 0 or shares <= 0:
+        raise ValueError("shares and liquidity must be positive")
     side = side.upper()
     action = action.upper()
     if side not in {"YES", "NO"} or action not in {"BUY", "SELL"}:
         raise ValueError("invalid side/action")
+    if action == "BUY" and shares > 1_000_000:
+        raise ValueError("buy at most 1,000,000 shares per trade")
 
     delta = shares if action == "BUY" else -shares
     new_yes = q_yes + (delta if side == "YES" else 0.0)

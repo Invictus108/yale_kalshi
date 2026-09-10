@@ -21,7 +21,8 @@ from app.services.resolve import (
     maybe_auto_resolve,
     propose_resolution,
 )
-from app.services.trading import execute_trade
+from app.services.history import position_value_series
+from app.services.trading import cash_out, execute_trade, quote_sell_proceeds
 from app.services.users import get_or_create_user
 from config import Config
 
@@ -98,6 +99,137 @@ class RegressionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             execute_trade(user_id=self.user.id, market=market, side='YES', action='BUY', shares=100000)
 
+    def test_profitable_cash_out_on_both_sides_in_every_unsettled_state(self):
+        for status in ['open', 'closed', 'proposed', 'disputed']:
+            for side in ['YES', 'NO']:
+                with self.subTest(status=status, side=side):
+                    market = self.market()
+                    buy = execute_trade(user_id=self.user.id, market=market, side=side, action='BUY', shares=10)
+                    execute_trade(user_id=self.other.id, market=market, side=side, action='BUY', shares=100)
+                    market.status = status
+                    if status != 'open':
+                        market.closes_at = utcnow() - timedelta(minutes=1)
+                    quote = quote_sell_proceeds(market, side, 10)
+                    self.assertGreater(quote, buy.cost)
+                    before = self.user.ledger.balance
+                    sale = cash_out(user_id=self.user.id, market=market, side=side)
+                    self.assertAlmostEqual(sale.cost, quote)
+                    self.assertAlmostEqual(self.user.ledger.balance, before + quote)
+                    pos = Position.query.filter_by(user_id=self.user.id, market_id=market.id).one()
+                    self.assertAlmostEqual(pos.yes_shares + pos.no_shares, 0)
+                    with self.assertRaises(ValueError):
+                        cash_out(user_id=self.user.id, market=market, side=side)
+                    if status != 'open':
+                        with self.assertRaises(ValueError):
+                            execute_trade(user_id=self.user.id, market=market, side=side, action='BUY', shares=1)
+
+    def test_expired_open_market_allows_sell_but_not_buy(self):
+        market = self.market()
+        execute_trade(user_id=self.user.id, market=market, side='YES', action='BUY', shares=10)
+        market.closes_at = utcnow() - timedelta(seconds=1)
+        with self.assertRaises(ValueError):
+            execute_trade(user_id=self.user.id, market=market, side='YES', action='BUY', shares=1)
+        sale = cash_out(user_id=self.user.id, market=market, side='YES')
+        self.assertEqual(sale.shares, 10)
+
+    def test_nontradeable_states_cannot_sell(self):
+        for status in ['pending', 'resolved', 'void']:
+            market = self.market(status=status)
+            with self.assertRaises(ValueError):
+                execute_trade(user_id=self.user.id, market=market, side='YES', action='SELL', shares=1)
+        self.assertEqual(Position.query.count(), 0)
+
+    def test_large_accumulated_holding_can_cash_out(self):
+        market = self.market()
+        apply_entry(self.user.id, 2_000_000, 'adjust')
+        for _ in range(2):
+            execute_trade(user_id=self.user.id, market=market, side='YES', action='BUY', shares=900_000)
+        quote = quote_sell_proceeds(market, 'YES', 1_800_000)
+        sale = cash_out(user_id=self.user.id, market=market, side='YES')
+        self.assertEqual(sale.shares, 1_800_000)
+        self.assertAlmostEqual(sale.cost, quote)
+
+    def test_closed_market_cash_out_ui_and_endpoint(self):
+        market = self.market()
+        execute_trade(user_id=self.user.id, market=market, side='YES', action='BUY', shares=10)
+        market.closes_at = utcnow() - timedelta(seconds=1)
+        db.session.commit()
+        mid = market.id
+        uid = self.user.id
+        self.sign_in()
+        detail = self.client.get(f'/markets/{mid}').get_data(as_text=True)
+        self.assertIn('Cash out YES', detail)
+        self.assertNotIn('<option value="BUY">', detail)
+        portfolio = self.client.get('/portfolio').get_data(as_text=True)
+        self.assertIn(f'/markets/{mid}/cash-out', portfolio)
+        response = self.post(f'/markets/{mid}/cash-out', side='YES', next='/portfolio')
+        self.assertEqual(response.location, '/portfolio')
+        self.assertEqual(Position.query.filter_by(user_id=uid, market_id=mid).one().yes_shares, 0)
+
+    def test_portfolio_settles_due_proposal_before_reading_balances(self):
+        market = self.market()
+        execute_trade(user_id=self.user.id, market=market, side='YES', action='BUY', shares=10)
+        market.closes_at = utcnow() - timedelta(minutes=1)
+        propose_resolution(market, proposer_id=self.user.id, outcome='YES', evidence='Official result')
+        market.dispute_deadline = utcnow() - timedelta(seconds=1)
+        db.session.commit()
+        mid = market.id
+        uid = self.user.id
+        before = self.user.ledger.balance
+        self.sign_in()
+        html = self.client.get('/portfolio').get_data(as_text=True)
+        self.assertIn('No open positions', html)
+        self.assertEqual(db.session.get(Market, mid).status, 'resolved')
+        self.assertAlmostEqual(db.session.get(User, uid).ledger.balance, before + 10)
+        self.client.get('/portfolio')
+        self.assertEqual(LedgerEntry.query.filter_by(kind='settle').count(), 1)
+
+    def test_cash_out_after_due_proposal_commits_settlement(self):
+        market = self.market()
+        execute_trade(user_id=self.user.id, market=market, side='YES', action='BUY', shares=10)
+        market.closes_at = utcnow() - timedelta(minutes=1)
+        propose_resolution(market, proposer_id=self.user.id, outcome='YES', evidence='Official result')
+        market.dispute_deadline = utcnow() - timedelta(seconds=1)
+        db.session.commit()
+        mid = market.id
+        self.sign_in()
+        self.post(f'/markets/{mid}/cash-out', side='YES')
+        self.assertEqual(db.session.get(Market, mid).status, 'resolved')
+        self.assertEqual(LedgerEntry.query.filter_by(kind='settle').count(), 1)
+
+    def test_validation_preserves_market_draft_and_escapes_html(self):
+        self.sign_in()
+        response = self.post('/markets/new', title='<script>alert(1)</script>', description='Saved draft',
+                             resolution_criteria='Saved criteria', resolution_source='Saved source', closes_at='bad')
+        html = response.get_data(as_text=True)
+        self.assertIn('Saved draft', html)
+        self.assertIn('Saved criteria', html)
+        self.assertIn('&lt;script&gt;alert(1)&lt;/script&gt;', html)
+
+    def test_internal_referrer_redirect_and_config_validation(self):
+        from app.security import safe_next
+        with self.app.test_request_context('/'):
+            self.assertEqual(safe_next('http://localhost/people?q=friend'), '/people?q=friend')
+            self.assertEqual(safe_next('https://evil.example/people'), '/')
+        class BadConfig(TestConfig):
+            LMSR_B = 0
+        with self.assertRaisesRegex(ValueError, 'LMSR_B'):
+            create_app(BadConfig)
+
+    def test_submitted_markets_and_rejection_reason_are_visible(self):
+        market = self.market(status='void')
+        market.rejection_reason = 'Please choose a verifiable source.'
+        db.session.commit()
+        self.sign_in()
+        self.assertIn('Your submitted markets', self.client.get('/portfolio').get_data(as_text=True))
+        self.assertIn('Please choose a verifiable source.', self.client.get(f'/markets/{market.id}').get_data(as_text=True))
+
+    def test_lifecycle_cli_closes_expired_markets(self):
+        mid = self.market(expired=True).id
+        result = self.app.test_cli_runner().invoke(args=['settle-markets'])
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertEqual(db.session.get(Market, mid).status, 'closed')
+
     def test_settlement_state_and_dispute_window(self):
         market = self.market()
         execute_trade(user_id=self.user.id, market=market, side='YES', action='BUY', shares=20)
@@ -140,6 +272,22 @@ class RegressionTests(unittest.TestCase):
         self.assertEqual(market.status, 'disputed')
         finalize_resolution(market, admin_id=self.admin.id, outcome='VOID')
         self.assertEqual(market.status, 'void')
+
+    def test_position_value_series_tracks_mark(self):
+        market = self.market()
+        execute_trade(user_id=self.user.id, market=market, side='YES', action='BUY', shares=20)
+        execute_trade(user_id=self.other.id, market=market, side='YES', action='BUY', shares=30)
+        series = position_value_series(self.user.id, market.id)
+        self.assertGreaterEqual(len(series), 2)
+        self.assertEqual(series[0]['kind'], 'trade')
+        self.assertGreater(series[-1]['mark'], 0)
+        # Other user's market has no series for this viewer until they trade.
+        self.assertEqual(position_value_series(self.admin.id, market.id), [])
+        # After a second market move, user's mark should update with price.
+        first_mark = series[0]['mark']
+        later = [p for p in series if p['kind'] == 'mark']
+        self.assertTrue(later)
+        self.assertNotEqual(later[-1]['mark'], first_mark)
 
     def test_csrf_and_post_only_logout(self):
         self.sign_in()

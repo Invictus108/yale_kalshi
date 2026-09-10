@@ -112,6 +112,10 @@ class Market(db.Model):
     def price_no(self) -> float:
         return 1.0 - self.price_yes
 
+    @property
+    def can_cash_out(self) -> bool:
+        return self.status in {"open", "closed", "proposed", "disputed"} and not self.final_outcome
+
 
 class Position(db.Model):
     __tablename__ = "positions"

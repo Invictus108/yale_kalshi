@@ -31,7 +31,7 @@
 
 <div class="panel">
   <h3>Open positions</h3>
-  <p class="meta">Cash out anytime while the market is open — sells your shares at the live price.</p>
+  <p class="meta">Cash out any time before settlement, even after purchases close. Estimates include the price movement caused by selling your shares and may change before submission.</p>
   <div class="table-scroll">
   <table class="table">
     <thead><tr><th>Market</th><th>YES</th><th>NO</th><th>Mark</th><th>Cash out</th></tr></thead>
@@ -46,9 +46,9 @@
         <td>{{ '%.2f'|format(p.no_shares) }}</td>
         <td>{{ '%.2f'|format(row.mark) }}</td>
         <td>
-          {% if p.market.status == 'open' %}
+          {% if p.market.can_cash_out %}
             <div class="btn-row">
-              {% if p.yes_shares > 0.0001 %}
+              {% if p.yes_shares > 0.000000001 %}
               <form method="post" action="{{ url_for('markets.cash_out_route', market_id=p.market_id) }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="side" value="YES">
@@ -56,7 +56,7 @@
                 <button type="submit" class="ghost" style="margin-top:0">YES ~{{ '%.1f'|format(row.yes_cash_out) }}</button>
               </form>
               {% endif %}
-              {% if p.no_shares > 0.0001 %}
+              {% if p.no_shares > 0.000000001 %}
               <form method="post" action="{{ url_for('markets.cash_out_route', market_id=p.market_id) }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="side" value="NO">
@@ -78,53 +78,55 @@
   </div>
 </div>
 
-{% if balance_series|length > 1 %}
+<section class="panel">
+  <h3>Your submitted markets</h3>
+  <p class="meta">Follow your latest 50 submissions through approval and resolution.</p>
+  {% for market in my_markets %}
+  <div class="friend-row"><a href="{{ url_for('markets.detail', market_id=market.id) }}">{{ market.title }}</a><span class="badge {{ market.status }}">{{ 'rejected' if market.rejection_reason else market.status }}</span></div>
+  {% else %}<p class="meta">No submissions yet. <a href="{{ url_for('markets.create') }}">Propose a market</a>.</p>{% endfor %}
+</section>
+
+{% if position_charts %}
+<div class="panel">
+  <h3>Bet value over time</h3>
+  <p class="meta">Mark-to-market of each open stake as the market price moves.</p>
+  <div class="bet-chart-grid">
+    {% for chart in position_charts %}
+    <div class="bet-chart-card">
+      <div class="bet-chart-head">
+        <a href="{{ url_for('markets.detail', market_id=chart.market_id) }}">{{ chart.title }}</a>
+        <span class="badge {{ chart.status }}">{{ chart.status }}</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="betChart-{{ chart.market_id }}" height="110" aria-label="Position value for {{ chart.title }}"></canvas>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if balance_series|length > 1 or position_charts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
 <script>
-  const series = {{ balance_series | tojson }};
-  const ctx = document.getElementById("balanceChart");
-  new Chart(ctx, {
-    type: "line",
-    data: {
-      labels: series.map((p) => p.t),
-      datasets: [{
+  document.addEventListener("DOMContentLoaded", () => {
+    const cashSeries = {{ balance_series | tojson }};
+    if (cashSeries.length > 1) {
+      window.yalshiLineChart(document.getElementById("balanceChart"), cashSeries, {
+        valueKey: "balance",
         label: "Cash balance",
-        data: series.map((p) => p.balance),
-        borderColor: "#00356b",
-        backgroundColor: "rgba(26, 90, 156, 0.12)",
-        fill: true,
-        tension: 0.25,
-        pointRadius: 3,
-        pointHoverRadius: 5,
-        pointBackgroundColor: "#1a5a9c",
-        borderWidth: 2,
-      }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            afterLabel: (item) => {
-              const p = series[item.dataIndex];
-              return p.note ? p.note : p.kind;
-            },
-          },
-        },
-      },
-      scales: {
-        x: {
-          ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8, color: "#5a6b7d", font: { size: 11 } },
-          grid: { display: false },
-        },
-        y: {
-          ticks: { color: "#5a6b7d", font: { size: 11 } },
-          grid: { color: "rgba(207, 216, 227, 0.7)" },
-        },
-      },
-    },
+        color: "#00356b",
+        fill: "rgba(26, 90, 156, 0.12)",
+      });
+    }
+    const betCharts = {{ position_charts | tojson }};
+    for (const chart of betCharts) {
+      window.yalshiLineChart(
+        document.getElementById("betChart-" + chart.market_id),
+        chart.series,
+        { valueKey: "mark", label: "Position mark", color: "#14654e", fill: "rgba(20, 101, 78, 0.12)" }
+      );
+    }
   });
 </script>
 {% endif %}

@@ -56,10 +56,9 @@ def create():
         if not all([title, description, criteria, source]):
             flash("All fields required.", "warning")
             return render_template("markets/create.html")
-        # Small skew buffer so "1–2 minutes from now" still works.
-        if closes_at <= utcnow() + timedelta(seconds=15):
+        if closes_at <= utcnow() + timedelta(seconds=30):
             flash(
-                "Close time must be at least ~30 seconds in the future (use your local time).",
+                "Close time must be at least 30 seconds in the future (use your local time).",
                 "warning",
             )
             return render_template("markets/create.html")
@@ -104,9 +103,10 @@ def detail(market_id: int):
     )
     my_pos = None
     cash_out_quotes = {"YES": 0.0, "NO": 0.0}
+    position_series = []
     if current_user.is_authenticated:
         my_pos = next((p for p in current_user.positions if p.market_id == market.id), None)
-        if my_pos and market.status == "open":
+        if my_pos and market.can_cash_out:
             if my_pos.yes_shares > 1e-9:
                 cash_out_quotes["YES"] = quote_sell_proceeds(
                     market, "YES", my_pos.yes_shares
@@ -115,6 +115,9 @@ def detail(market_id: int):
                 cash_out_quotes["NO"] = quote_sell_proceeds(
                     market, "NO", my_pos.no_shares
                 )
+        from app.services.history import position_value_series
+
+        position_series = position_value_series(current_user.id, market.id)
     return render_template(
         "markets/detail.html",
         market=market,
@@ -122,6 +125,7 @@ def detail(market_id: int):
         messages=list(reversed(messages)),
         my_pos=my_pos,
         cash_out_quotes=cash_out_quotes,
+        position_series=position_series,
     )
 
 
@@ -130,6 +134,8 @@ def detail(market_id: int):
 def trade(market_id: int):
     market = Market.query.get_or_404(market_id)
     refresh_market(market)
+    if market.status in {"resolved", "void"}:
+        db.session.commit()
     side = request.form.get("side", "YES")
     action = request.form.get("action", "BUY")
     try:
@@ -155,13 +161,15 @@ def cash_out_route(market_id: int):
     """Sell all YES or NO holdings back to the market at the live AMM price."""
     market = Market.query.get_or_404(market_id)
     refresh_market(market)
+    if market.status in {"resolved", "void"}:
+        db.session.commit()
     side = (request.form.get("side") or "YES").upper()
     try:
         trade = cash_out(user_id=current_user.id, market=market, side=side)
         db.session.commit()
         flash(
-            f"Cashed out {trade.shares:.2f} {side} for ~{trade.cost:.2f} pts "
-            f"(~{trade.avg_price * 100:.1f}¢/share).",
+            f"Cashed out {trade.shares:.2f} {side} for {trade.cost:.2f} pts "
+            f"(average {trade.avg_price * 100:.1f}¢/share).",
             "success",
         )
     except ValueError as exc:

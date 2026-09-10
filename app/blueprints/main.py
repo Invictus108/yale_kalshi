@@ -2,7 +2,7 @@ from flask import Blueprint, render_template
 from flask_login import current_user, login_required
 
 from app.extensions import db
-from app.models import User
+from app.models import Market, User
 from app.services.feed import popular_feed, user_stats
 from app.services.users import portfolio_value
 
@@ -20,6 +20,8 @@ def index():
 @main_bp.route("/leaderboard")
 @login_required
 def leaderboard():
+    from app.services.resolve import refresh_active_markets
+    refresh_active_markets()
     users = User.query.all()
     rows = []
     for u in users:
@@ -39,7 +41,9 @@ def leaderboard():
 @main_bp.route("/portfolio")
 @login_required
 def portfolio():
-    from app.services.history import cash_balance_series
+    from app.services.resolve import refresh_active_markets
+    refresh_active_markets()
+    from app.services.history import cash_balance_series, open_position_charts
     from app.services.trading import quote_sell_proceeds
 
     positions = [p for p in current_user.positions if p.yes_shares > 1e-9 or p.no_shares > 1e-9]
@@ -49,12 +53,12 @@ def portfolio():
     for p in positions:
         yes_out = (
             quote_sell_proceeds(p.market, "YES", p.yes_shares)
-            if p.market.status == "open" and p.yes_shares > 1e-9
+            if p.market.can_cash_out and p.yes_shares > 1e-9
             else 0.0
         )
         no_out = (
             quote_sell_proceeds(p.market, "NO", p.no_shares)
-            if p.market.status == "open" and p.no_shares > 1e-9
+            if p.market.can_cash_out and p.no_shares > 1e-9
             else 0.0
         )
         position_rows.append(
@@ -73,4 +77,6 @@ def portfolio():
         total=portfolio_value(current_user),
         stats=user_stats(current_user),
         balance_series=series,
+        position_charts=open_position_charts(current_user.id, positions),
+        my_markets=Market.query.filter_by(creator_id=current_user.id).order_by(Market.created_at.desc(), Market.id.desc()).limit(50).all(),
     )

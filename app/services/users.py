@@ -57,12 +57,9 @@ def get_or_create_user(netid: str) -> User:
 
 def portfolio_value(user: User) -> float:
     cash = user.ledger.balance if user.ledger else 0.0
-    from app.services.resolve import close_if_expired
-
     marked = 0.0
     for pos in user.positions:
         market = pos.market
-        close_if_expired(market)
         if market.status in {"resolved", "void"}:
             continue
         marked += pos.yes_shares * market.price_yes + pos.no_shares * market.price_no

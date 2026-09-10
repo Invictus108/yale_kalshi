@@ -1,6 +1,6 @@
 """Session-bound form protection and local redirect validation."""
 import secrets
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 from flask import abort, request, session, url_for
 from sqlalchemy import text
@@ -14,6 +14,9 @@ def safe_next(target):
         parts = urlsplit(target)
     except ValueError:
         return url_for("main.index")
+    if parts.scheme == request.scheme and parts.netloc == request.host:
+        target = urlunsplit(("", "", parts.path or "/", parts.query, parts.fragment))
+        parts = urlsplit(target)
     if (parts.scheme or parts.netloc or not target.startswith("/")
             or target.startswith("//") or "\\" in target
             or any(ord(c) < 32 for c in target)):

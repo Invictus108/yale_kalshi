@@ -6,7 +6,8 @@ from app.models import LedgerAccount, LedgerEntry, utcnow
 
 
 def get_or_create_account(user_id: int) -> LedgerAccount:
-    account = LedgerAccount.query.filter_by(user_id=user_id).first()
+    account = (LedgerAccount.query.filter_by(user_id=user_id)
+               .populate_existing().with_for_update().first())
     if account:
         return account
     account = LedgerAccount(user_id=user_id, rail="PLAY", balance=0.0)
